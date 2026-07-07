@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIGAP HSE — Dashboard Monitoring Temuan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: ['class', '[data-theme="dark"]'],
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Inter', 'sans-serif'],
+          condensed: ['Barlow Condensed', 'sans-serif'],
+          mono: ['JetBrains Mono', 'monospace'],
+        }
+      }
+    }
+  }
+</script>
+
+<style>
+  :root{
+    /* Modern Slate Colors for Dark Mode */
+    --bg: #0f172a;       /* slate-900 */
+    --panel: #1e293b;    /* slate-800 */
+    --panel-2: #334155;  /* slate-700 */
+    --border: #475569;   /* slate-600 */
+    --border-soft: #334155;
+    --text: #f8fafc;     /* slate-50 */
+    --text-dim: #cbd5e1; /* slate-300 */
+    --text-faint: #94a3b8; /* slate-400 */
+    
+    /* HSE Specific High-Vis Colors */
+    --orange: #ff6a00;   /* Safety Orange */
+    --yellow: #ffcc00;   /* Warning Yellow */
+    --green: #10b981;    /* Safe Green */
+    --red: #ef4444;      /* Danger Red */
+    --amber: #f59e0b;
+    --blue: #3b82f6;
+    
+    --radius: 12px;
+    --shadow: 0 10px 30px -10px rgba(0,0,0,0.7);
+    --shadow-soft: 0 4px 15px rgba(0,0,0,0.3);
+  }
+  
+  [data-theme="light"]{
+    /* Clean, crisp colors for Light Mode */
+    --bg: #f8fafc;       /* slate-50 */
+    --panel: #ffffff;
+    --panel-2: #f1f5f9;  /* slate-100 */
+    --border: #cbd5e1;   /* slate-300 */
+    --border-soft: #e2e8f0;
+    --text: #0f172a;     /* slate-900 */
+    --text-dim: #475569; /* slate-600 */
+    --text-faint: #64748b; /* slate-500 */
+    
+    --shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.1);
+    --shadow-soft: 0 2px 10px rgba(15, 23, 42, 0.05);
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%; overflow: hidden;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    transition:background .3s ease, color .3s ease;
+  }
+  
+  /* HSE Hazard Strip - More prominent */
+  .hazard-strip{
+    height: 8px;
+    width: 100%;
+    background: repeating-linear-gradient(135deg, var(--yellow) 0 20px, #1a1a1a 20px 40px);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    position: relative;
+    z-index: 50;
+  }
+  [data-theme="light"] .hazard-strip {
+    background: repeating-linear-gradient(135deg, var(--yellow) 0 20px, #333 20px 40px);
+  }
+
+  .display{font-family:'Barlow Condensed',sans-serif; text-transform:uppercase; letter-spacing:0.04em;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+
+  /* Layout */
+  .shell{display:flex; height:calc(100vh - 8px); overflow: hidden;}
+  
+  .sidebar{
+    width:240px; flex-shrink:0;
+    background:var(--panel);
+    border-right:1px solid var(--border);
+    padding:24px 16px;
+    display:flex; flex-direction:column; gap:24px;
+    transition:background .3s ease, border-color .3s ease;
+    z-index: 10;
+  }
+  .brand{display:flex; align-items:center; gap:12px; padding:0 8px;}
+  .brand-mark{
+    width:36px; height:36px; border-radius:8px;
+    background:linear-gradient(135deg, var(--orange), var(--yellow));
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Barlow Condensed',sans-serif; font-weight:700; color:#000; font-size:20px;
+    box-shadow: 0 4px 10px rgba(255, 106, 0, 0.3);
+  }
+  .brand-name{font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:22px; letter-spacing:0.03em; line-height: 1.1;}
+  .brand-sub{font-size:10.5px; color:var(--text-faint); letter-spacing:0.1em; text-transform:uppercase; font-weight: 600;}
+
+  nav{display:flex; flex-direction:column; gap:4px;}
+  .nav-label{font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.1em; padding:12px 10px 8px; font-weight: 600;}
+  .nav-item{
+    display:flex; align-items:center; gap:12px;
+    padding:10px 12px; border-radius:8px; color:var(--text-dim);
+    font-size:14px; font-weight:500; cursor:pointer; border:1px solid transparent;
+    transition:all .2s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .nav-item svg{width:18px; height:18px; flex-shrink:0; stroke-width: 2.2;}
+  .nav-item:hover{background:var(--panel-2); color:var(--text);}
+  .nav-item.active{background:var(--bg); color:var(--text); border-color:var(--border); box-shadow: var(--shadow-soft);}
+  .nav-item.active::before {
+    content: ''; position: absolute; left: 0; top: 15%; height: 70%; width: 4px; background: var(--orange); border-radius: 0 4px 4px 0;
+  }
+  .nav-item.active .nav-dot{background:var(--orange);}
+  .nav-dot{width:6px; height:6px; border-radius:50%; background:transparent; margin-left:auto; flex-shrink:0;}
+  .nav-count{margin-left:auto; font-size:11px; font-family:'JetBrains Mono',monospace; color:var(--text-faint); background:var(--panel-2); border:1px solid var(--border); padding:2px 8px; border-radius:20px; font-weight: 600;}
+  .nav-item.active .nav-count{color:var(--text); background: var(--bg);}
+
+  .sidebar-foot{margin-top:auto; padding:16px 12px; border-radius: 8px; background: rgba(255, 106, 0, 0.05); border: 1px dashed var(--orange); font-size:11.5px; color:var(--text-dim); line-height:1.6;}
+
+  .main{flex:1; min-width:0; padding:28px 32px 60px; overflow-y:auto; overflow-x:hidden;}
+
+  .view{display:none;}
+  .view.active{display:block; animation:fadeIn .3s ease;}
+  @keyframes fadeIn{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+
+  .topbar{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:28px; flex-wrap:wrap;}
+  .page-title{font-family:'Barlow Condensed',sans-serif; font-size:32px; font-weight:700; letter-spacing:0.02em; line-height: 1.2;}
+  .page-sub{color:var(--text-faint); font-size:14px; margin-top:4px; font-weight: 500;}
+  
+  .topbar-actions{display:flex; gap:12px; align-items:center;}
+  .search{
+    display:flex; align-items:center; gap:8px;
+    background:var(--panel); border:1px solid var(--border); border-radius:8px;
+    padding:9px 14px; color:var(--text-faint); font-size:14px; min-width:240px;
+    box-shadow: var(--shadow-soft);
+    transition: border-color .2s;
+  }
+  .search:focus-within { border-color: var(--orange); }
+  .search input{background:none; border:none; outline:none; color:var(--text); font-size:14px; width:100%; font-family:'Inter',sans-serif;}
+  
+  .btn{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:10px 18px; border-radius:8px; border:1px solid var(--border);
+    background:var(--panel); color:var(--text); font-size:14px; font-weight:600;
+    cursor:pointer; white-space:nowrap; font-family:'Inter',sans-serif;
+    transition:all .2s ease; box-shadow: var(--shadow-soft);
+  }
+  .btn:hover{background:var(--panel-2); transform: translateY(-1px);}
+  .btn:active{transform:translateY(1px);}
+  .btn-primary{
+    background:var(--orange); border-color:var(--orange); color:#fff;
+    box-shadow: 0 4px 12px rgba(255, 106, 0, 0.3);
+  }
+  .btn-primary:hover{background:#ff852e; border-color: #ff852e;}
+  .btn svg{width:16px; height:16px; stroke-width: 2.2;}
+  
+  .theme-toggle{
+    display:flex; align-items:center; justify-content:center;
+    width:40px; height:40px; border-radius:8px; border:1px solid var(--border);
+    background:var(--panel); color:var(--text-dim); cursor:pointer; flex-shrink:0;
+    transition:all .2s ease; box-shadow: var(--shadow-soft);
+  }
+  .theme-toggle:hover{background:var(--panel-2); color:var(--text);}
+  .theme-toggle svg{width:18px; height:18px;}
+
+  .kpi-row{display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px;}
+  .kpi-card{
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:20px; position:relative; overflow:hidden; box-shadow: var(--shadow-soft);
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+  .kpi-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+  .kpi-card::before{ content:''; position:absolute; top:0; left:0; width:4px; height:100%; }
+  .kpi-card.total::before{background:var(--blue);}
+  .kpi-card.open::before{background:var(--red);}
+  .kpi-card.progress::before{background:var(--amber);}
+  .kpi-card.closed::before{background:var(--green);}
+  .kpi-top{display:flex; justify-content:space-between; align-items:flex-start;}
+  .kpi-label{font-size:12.5px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.08em; font-weight:700;}
+  .kpi-value{font-family:'Barlow Condensed',sans-serif; font-size:40px; font-weight:700; margin-top:8px; line-height: 1;}
+  .kpi-delta{font-size:12px; margin-top:8px; color:var(--text-faint); display: flex; align-items: center; gap: 4px; font-weight: 500;}
+  .kpi-delta.up{color:var(--red);}
+  .kpi-delta.down{color:var(--green);}
+  .kpi-icon{width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:var(--panel-2); border: 1px solid var(--border);}
+  .kpi-icon svg{width:20px; height:20px;}
+
+  .charts-row{display:grid; grid-template-columns:1.6fr 1fr; gap:16px; margin-bottom:24px;}
+  .panel{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:22px; box-shadow: var(--shadow-soft); transition:background .3s ease, border-color .3s ease;}
+  .panel-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; gap:12px; flex-wrap:wrap;}
+  .panel-title{font-family:'Barlow Condensed',sans-serif; font-size:18px; font-weight:700; letter-spacing:0.02em;}
+  .panel-title-sub{font-size:12px; color:var(--text-faint); margin-top:2px; font-weight: 500;}
+  .panel-link{font-size:13px; color:var(--orange); font-weight:600; cursor:pointer; display: flex; align-items: center; gap: 4px;}
+  .panel-link:hover { text-decoration: underline; }
+  
+  .seg{display:flex; gap:4px; background:var(--panel-2); border:1px solid var(--border); border-radius:8px; padding:4px;}
+  .seg span{padding:6px 12px; font-size:12px; font-weight: 600; color:var(--text-dim); border-radius:6px; cursor:pointer; transition: all .2s;}
+  .seg span.active{background:var(--bg); color:var(--text); border:1px solid var(--border); box-shadow: var(--shadow-soft);}
+  .chart-wrap{height:240px; position:relative;}
+
+  .legend-list{display:flex; flex-direction:column; gap:12px; margin-top:20px;}
+  .legend-row{display:flex; align-items:center; gap:10px; font-size:13px; font-weight: 500;}
+  .legend-dot{width:10px; height:10px; border-radius:3px; flex-shrink:0;}
+  .legend-name{color:var(--text-dim); flex:1;}
+  .legend-val{font-family:'JetBrains Mono',monospace; font-weight:700; color: var(--text);}
+
+  .filter-bar{
+    display:flex; gap:12px; flex-wrap:wrap; align-items:center;
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:16px; margin-bottom:16px; box-shadow: var(--shadow-soft);
+  }
+  .filter-bar select, .filter-bar input[type=date]{
+    background:var(--panel-2); border:1px solid var(--border); color:var(--text);
+    font-size:13px; padding:8px 12px; border-radius:8px; font-family:'Inter',sans-serif; font-weight: 500;
+    outline: none; transition: border-color .2s;
+  }
+  .filter-bar select:focus, .filter-bar input:focus { border-color: var(--orange); }
+  .filter-tag{font-size:12px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.08em; font-weight: 700; margin-right:4px;}
+  .filter-reset{margin-left:auto; font-size:13px; color:var(--orange); cursor:pointer; font-weight:600;}
+  .filter-reset:hover { text-decoration: underline; }
+  .filter-count{font-size:13px; color:var(--text-faint); font-weight: 500;}
+
+  /* Table */
+  .table-panel{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; box-shadow: var(--shadow-soft);}
+  table{width:100%; border-collapse:collapse;}
+  thead th{
+    text-align:left; font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.08em;
+    padding:14px 16px; border-bottom:1px solid var(--border); background:var(--panel-2); font-weight:700; white-space:nowrap;
+  }
+  tbody td{padding:14px 16px; font-size:14px; border-bottom:1px solid var(--border-soft); vertical-align:middle; font-weight: 500;}
+  tbody tr{cursor:pointer; transition:background .15s;}
+  tbody tr:hover{background:var(--panel-2);}
+  tbody tr:last-child td{border-bottom:none;}
+  .id-cell{font-family:'JetBrains Mono',monospace; color:var(--text-dim); font-size:13px; font-weight: 600;}
+  
+  /* Modern Badges */
+  .badge{
+    display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:700;
+    padding:5px 10px; border-radius:6px; text-transform:uppercase; letter-spacing:0.05em; white-space:nowrap;
+    border: 1px solid transparent;
+  }
+  .badge::before{content:''; width:6px; height:6px; border-radius:50%;}
+  .badge.open{background:rgba(239, 68, 68, 0.1); color:var(--red); border-color: rgba(239, 68, 68, 0.2);}
+  .badge.open::before{background:var(--red); box-shadow: 0 0 6px var(--red);}
+  .badge.progress{background:rgba(245, 158, 11, 0.1); color:var(--amber); border-color: rgba(245, 158, 11, 0.2);}
+  .badge.progress::before{background:var(--amber); box-shadow: 0 0 6px var(--amber);}
+  .badge.pending{background:rgba(59, 130, 246, 0.1); color:var(--blue); border-color: rgba(59, 130, 246, 0.2);}
+  .badge.pending::before{background:var(--blue); box-shadow: 0 0 6px var(--blue);}
+  .badge.closed{background:rgba(16, 185, 129, 0.1); color:var(--green); border-color: rgba(16, 185, 129, 0.2);}
+  .badge.closed::before{background:var(--green); box-shadow: 0 0 6px var(--green);}
+  
+  .row-loc{color:var(--text-dim); font-size:13px;}
+  .row-loc b{color:var(--text); font-weight: 600;}
+  .photo-chip{display:flex; gap:6px;}
+  .photo-chip .ph{
+    width:26px; height:26px; border-radius:6px; background:var(--panel-2); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center; color:var(--text-faint);
+  }
+  .photo-chip .ph svg{width:12px; height:12px;}
+  .pic-cell{display:flex; align-items:center; gap:10px;}
+  .avatar{width:26px; height:26px; border-radius:6px; background:var(--panel-2); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:var(--text-dim); font-family:'Barlow Condensed',sans-serif; flex-shrink:0;}
+  
+  .table-foot{display:flex; justify-content:space-between; align-items:center; padding:14px 16px; font-size:13px; color:var(--text-faint); border-top:1px solid var(--border); flex-wrap:wrap; gap:12px; background: var(--panel-2);}
+
+  .bottom-grid{display:grid; grid-template-columns:2.2fr 1fr; gap:16px; margin-top:16px;}
+
+  .pagination{display:flex; gap:6px; align-items:center;}
+  .page-btn{
+    min-width:32px; height:32px; padding:0 8px; border-radius:8px; border:1px solid var(--border);
+    background:var(--panel); color:var(--text-dim); display:flex; align-items:center; justify-content:center;
+    cursor:pointer; font-size:13px; font-family:'JetBrains Mono',monospace; font-weight: 600;
+    transition: all .2s;
+  }
+  .page-btn:hover:not(:disabled){background:var(--panel-2); color:var(--text);}
+  .page-btn.active{background:var(--orange); border-color:var(--orange); color:#fff; box-shadow: 0 2px 8px rgba(255, 106, 0, 0.4);}
+  .page-btn:disabled{opacity:.4; cursor:not-allowed;}
+
+  .activity-item{display:flex; gap:12px; padding:12px 0; border-bottom:1px solid var(--border-soft);}
+  .activity-item:last-child{border-bottom:none;}
+  .activity-dot{width:8px; height:8px; border-radius:50%; margin-top:6px; flex-shrink:0; box-shadow: 0 0 8px currentColor;}
+  .activity-text{font-size:13px; color:var(--text-dim); line-height:1.6;}
+  .activity-text b{color:var(--text); font-weight:600;}
+  .activity-time{font-size:11px; color:var(--text-faint); margin-top:4px; font-family:'JetBrains Mono',monospace; font-weight: 500;}
+  .activity-empty{font-size:13px; color:var(--text-faint); padding:20px 0; text-align:center;}
+
+  .report-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:16px;}
+  .report-card{border:1px solid var(--border); border-radius:12px; padding:18px; background:var(--panel-2); display:flex; flex-direction:column; gap:10px; cursor:pointer; transition:all .2s;}
+  .report-card:hover{border-color:var(--orange); transform:translateY(-2px); box-shadow: var(--shadow-soft);}
+  .report-card:active{transform:translateY(0);}
+  .report-card .rc-icon{width:36px; height:36px; border-radius:8px; background:var(--bg); border:1px solid var(--border); display:flex; align-items:center; justify-content:center;}
+  .report-card .rc-icon svg{width:18px; height:18px; color:var(--orange);}
+  .report-card .rc-name{font-size:15px; font-weight:700;}
+  .report-card .rc-desc{font-size:13px; color:var(--text-faint); line-height:1.5;}
+
+  .stat-strip{display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:20px;}
+  .stat-box{background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:16px 20px; box-shadow: var(--shadow-soft);}
+  .stat-box-label{font-size:11.5px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.08em; font-weight:700;}
+  .stat-box-val{font-family:'Barlow Condensed',sans-serif; font-size:32px; font-weight:700; margin-top:6px; line-height: 1;}
+  .stat-box-sub{font-size:12px; color:var(--text-dim); margin-top:6px; font-weight: 500;}
+
+  .rank-num{width:26px; height:26px; border-radius:6px; background:var(--panel-2); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:14px; color:var(--text-dim);}
+  .rank-num.top{background:var(--orange); border-color:var(--orange); color:#fff; box-shadow: 0 2px 8px rgba(255, 106, 0, 0.4);}
+  .bar-cell{display:flex; align-items:center; gap:10px;}
+  .bar-track{flex:1; height:8px; border-radius:4px; background:var(--panel-2); overflow:hidden;}
+  .bar-fill{height:100%; border-radius:4px; background:var(--orange);}
+
+  /* Modals */
+  .overlay{
+    position:fixed; inset:0; background:rgba(0, 0, 0, 0.7); backdrop-filter:blur(4px);
+    display:none; align-items:flex-start; justify-content:center; padding:40px 20px; z-index:50; overflow-y:auto;
+  }
+  [data-theme="light"] .overlay{background:rgba(15, 23, 42, 0.5);}
+  .overlay.show{display:flex; animation: fadeIn .2s ease;}
+  .modal{
+    background:var(--bg); border:1px solid var(--border); border-radius:16px; width:100%; max-width:680px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); overflow: hidden;
+  }
+  .modal.wide{max-width:880px;}
+  
+  .modal-head{display:flex; justify-content:space-between; align-items:center; padding:20px 24px; border-bottom:1px solid var(--border); background: var(--panel);}
+  .modal-title{font-family:'Barlow Condensed',sans-serif; font-size:22px; font-weight:700;}
+  .modal-close{cursor:pointer; color:var(--text-faint); font-size:24px; line-height:1; background:none; border:none; transition: color .2s;}
+  .modal-close:hover { color: var(--red); }
+  
+  .modal-body{padding:24px; display:grid; grid-template-columns:1fr 1fr; gap:16px; background: var(--bg);}
+  .field{display:flex; flex-direction:column; gap:8px;}
+  .field.full{grid-column:1/-1;}
+  .field label{font-size:12px; color:var(--text-dim); font-weight:700; text-transform:uppercase; letter-spacing:0.06em;}
+  .field input, .field select, .field textarea{
+    background:var(--panel); border:1px solid var(--border); color:var(--text); border-radius:8px;
+    padding:10px 14px; font-size:14px; font-family:'Inter',sans-serif; outline:none; transition: border-color .2s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{border-color:var(--orange);}
+  .field textarea{resize:vertical; min-height:80px;}
+  .upload-box{
+    border:2px dashed var(--border); border-radius:12px; padding:24px; text-align:center;
+    color:var(--text-faint); font-size:13px; display:flex; flex-direction:column; align-items:center; gap:8px;
+    background: var(--panel-2); cursor: pointer; transition: all .2s; font-weight: 500;
+  }
+  .upload-box:hover { border-color: var(--orange); background: var(--panel); color: var(--text-dim); }
+  .upload-box svg{width:24px; height:24px; color:var(--text-faint);}
+  .modal-foot{display:flex; justify-content:flex-end; gap:12px; padding:20px 24px; border-top:1px solid var(--border); background: var(--panel);}
+
+  .detail-top{display:flex; align-items:center; justify-content:space-between; padding:20px 24px; border-bottom:1px solid var(--border); background: var(--panel);}
+  .modal-head-left{display:flex; align-items:center; gap:16px;}
+  .detail-grid{display:grid; grid-template-columns:1.3fr 1fr;}
+  .detail-col{padding:24px;}
+  .detail-col + .detail-col{border-left:1px solid var(--border); background: var(--panel-2);}
+  .detail-meta{display:grid; grid-template-columns:1fr 1fr; gap:16px 20px; margin-bottom:24px;}
+  .detail-meta-item label{display:block; font-size:11.5px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.08em; font-weight:700; margin-bottom:4px;}
+  .detail-meta-item div{font-size:14px; color:var(--text); font-weight: 500;}
+  .detail-desc{font-size:14px; color:var(--text-dim); line-height:1.6; background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:24px;}
+  
+  .photo-set{margin-bottom:20px;}
+  .photo-set-label{font-size:12px; text-transform:uppercase; color:var(--text-dim); letter-spacing:.08em; font-weight:700; margin-bottom:10px; display:flex; align-items:center; gap:8px;}
+  .photo-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px;}
+  .photo-ph{aspect-ratio:1; border-radius:8px; background:var(--panel); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; color:var(--text-faint);}
+  .photo-ph svg{width:20px; height:20px;}
+  .photo-ph.after{background:rgba(16, 185, 129, 0.1); border-color:rgba(16, 185, 129, 0.3); color:var(--green);}
+  
+  .timeline{display:flex; flex-direction:column;}
+  .timeline-item{display:flex; gap:12px; padding-bottom:20px; position:relative;}
+  .timeline-item::before{content:''; position:absolute; left:6px; top:16px; bottom:0; width:2px; background:var(--border);}
+  .timeline-item:last-child::before{display:none;}
+  .timeline-dot{width:14px; height:14px; border-radius:50%; box-shadow:0 0 0 4px var(--panel-2); flex-shrink:0; margin-top:3px; z-index:1;}
+  
+  .comment-box{display:flex; gap:10px; margin-top:20px;}
+  .comment-box input{flex:1; background:var(--panel); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:10px 14px; font-size:13px; outline:none; font-family:'Inter',sans-serif;}
+  .comment-box input:focus{border-color:var(--orange);}
+
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--panel); border:1px solid var(--border); border-left:4px solid var(--green);
+    padding:14px 20px; border-radius:8px; font-size:14px; font-weight: 500; box-shadow:var(--shadow);
+    opacity:0; pointer-events:none; transition:all .3s ease; z-index:9000; max-width:90vw;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  ::-webkit-scrollbar{width:8px; height:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--border); border-radius:4px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+
+  /* Login Screen specifics */
+  #loginScreen {
+    backdrop-filter: blur(8px);
+  }
+
+  @media (max-width:980px){
+    .sidebar{display:none;}
+    .kpi-row{grid-template-columns:repeat(2,1fr);}
+    .charts-row, .bottom-grid, .report-grid, .stat-strip{grid-template-columns:1fr;}
+    .modal-body, .detail-meta{grid-template-columns:1fr;}
+    .detail-grid{grid-template-columns:1fr;}
+    .detail-col + .detail-col{border-left:none; border-top:1px solid var(--border);}
+    .search{min-width:0;}
+  }
+</style>
+</head>
+<body class="font-sans antialiased text-slate-100 selection:bg-orange-500 selection:text-white">
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" class="fixed inset-0 z-[100] flex items-center justify-center transition-opacity duration-500 bg-slate-900/90">
+  <div class="relative w-full max-w-md mx-4 overflow-hidden rounded-2xl bg-slate-800 border border-slate-700 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.7)]">
+    <!-- Decor strip -->
+    <div class="h-2 w-full hazard-strip"></div>
+    
+    <div class="p-8 sm:p-10">
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-orange-500 to-yellow-500 mb-4 shadow-[0_0_20px_rgba(255,106,0,0.3)]">
+          <span class="font-condensed font-bold text-3xl text-slate-900">S</span>
+        </div>
+        <h1 class="text-3xl font-bold font-condensed tracking-wide text-white">SIGAP HSE</h1>
+        <p class="text-slate-400 font-medium mt-1">Portal Monitoring Keselamatan Kerja</p>
+      </div>
+      
+      <div class="space-y-5">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Username</label>
+          <div class="relative">
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+            <input type="text" id="loginUser" class="w-full bg-slate-900/50 border border-slate-600 rounded-lg pl-10 pr-4 py-3 text-white focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition font-medium" value="admin" placeholder="Masukkan NIK">
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2 font-medium flex items-center gap-1">
+            <svg class="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            Hint: Gunakan "admin" atau NIK Karyawan.
+          </p>
+        </div>
+        
+        <div>
+          <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Password</label>
+          <div class="relative">
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+            <input type="password" id="loginPass" class="w-full bg-slate-900/50 border border-slate-600 rounded-lg pl-10 pr-4 py-3 text-white focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition font-medium" value="123456" placeholder="••••••••">
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2 font-medium flex items-center gap-1">
+            <svg class="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            Hint: Gunakan sandi standar "123456".
+          </p>
+        </div>
+        
+        <button id="doLoginBtn" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-3.5 rounded-lg transition mt-4 flex justify-center items-center gap-2 shadow-[0_4px_14px_rgba(255,106,0,0.4)]">
+          <span>Masuk Dashboard</span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="hazard-strip"></div>
+
+<div class="shell">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">S</div>
+      <div>
+        <div class="brand-name">SIGAP HSE</div>
+        <div class="brand-sub">Findings Monitor</div>
+      </div>
+    </div>
+
+    <nav class="mt-4">
+      <div class="nav-label">Menu Utama</div>
+      <div class="nav-item active" data-view="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Dashboard<span class="nav-dot"></span>
+      </div>
+      <div class="nav-item" data-view="temuan">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+        Daftar Temuan<span class="nav-count" id="navCountTemuan">—</span>
+      </div>
+      <div class="nav-item" data-view="analisis">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+        Analisis Tren<span class="nav-dot"></span>
+      </div>
+      <div class="nav-item" data-view="laporan">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+        Laporan<span class="nav-dot"></span>
+      </div>
+    </nav>
+
+    <nav>
+      <div class="nav-label">Master Data</div>
+      <div class="nav-item" data-view="pic">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1"/></svg>
+        PIC &amp; Dept
+      </div>
+      <div class="nav-item" data-view="area">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 21s-7-4.5-7-11a7 7 0 0 1 14 0c0 6.5-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        Area &amp; Lokasi
+      </div>
+    </nav>
+
+    <div class="sidebar-foot mt-auto">
+      <strong>Demo:</strong> Data dummy untuk simulasi. Perubahan tersimpan lokal.
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    
+    <div class="topbar">
+      <div>
+        <div class="page-title" id="pageTitle">Dashboard Utama</div>
+        <div class="page-sub" id="pageSub">Ringkasan temuan HSE — diperbarui otomatis setiap laporan baru masuk</div>
+      </div>
+      <div class="topbar-actions">
+        <div class="search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="searchInput" placeholder="Cari ID, lokasi, PIC...">
+        </div>
+        <button class="theme-toggle" id="themeToggle" title="Ganti tema terang/gelap">
+          <svg id="themeIconMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+          <svg id="themeIconSun" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        </button>
+        <button class="btn" id="exportBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+          Ekspor
+        </button>
+        <button class="btn btn-primary" id="openModalBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14"/></svg>
+          Input Temuan
+        </button>
+      </div>
+    </div>
+
+    <!-- ============ VIEW: DASHBOARD ============ -->
+    <div class="view active" id="view-dashboard">
+      <div class="kpi-row">
+        <div class="kpi-card total">
+          <div class="kpi-top">
+            <div><div class="kpi-label">Total Temuan</div><div class="kpi-value" id="kpiTotal">—</div></div>
+            <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5"><path d="M9 11H5a2 2 0 0 0-2 2v7h6"/><path d="M22 20V8l-6-4-6 4v12"/><path d="M12 20v-4"/></svg></div>
+          </div>
+          <div class="kpi-delta up" id="kpiTotalDelta">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"></path></svg>
+            dibanding bulan lalu
+          </div>
+        </div>
+        <div class="kpi-card open">
+          <div class="kpi-top">
+            <div><div class="kpi-label">Status Open</div><div class="kpi-value" id="kpiOpen">—</div></div>
+            <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg></div>
+          </div>
+          <div class="kpi-delta" style="color:var(--text-faint)">Perlu tindak lanjut segera</div>
+        </div>
+        <div class="kpi-card progress">
+          <div class="kpi-top">
+            <div><div class="kpi-label">On Progress</div><div class="kpi-value" id="kpiProgress">—</div></div>
+            <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/></svg></div>
+          </div>
+          <div class="kpi-delta" id="kpiProgressSub" style="color:var(--text-faint)">Rata-rata berjalan</div>
+        </div>
+        <div class="kpi-card closed">
+          <div class="kpi-top">
+            <div><div class="kpi-label">Closed / Aman</div><div class="kpi-value" id="kpiClosed">—</div></div>
+            <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><path d="m5 13 4 4L19 7"/></svg></div>
+          </div>
+          <div class="kpi-delta down" id="kpiClosedSub">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+            Penyelesaian bulan ini
+          </div>
+        </div>
+      </div>
+
+      <div class="charts-row">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Tren Temuan vs Penyelesaian</div>
+              <div class="panel-title-sub">6 bulan terakhir</div>
+            </div>
+            <div class="seg" id="segTrendDash"><span class="active" data-mode="monthly">Bulanan</span><span data-mode="weekly">Mingguan</span></div>
+          </div>
+          <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+        </div>
+        <div class="panel flex flex-col">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Kategori Risiko</div>
+              <div class="panel-title-sub">Distribusi seluruh temuan</div>
+            </div>
+          </div>
+          <div class="chart-wrap" style="height:160px;"><canvas id="catChart"></canvas></div>
+          <div class="legend-list flex-1" id="catLegend"></div>
+        </div>
+      </div>
+
+      <div class="bottom-grid">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Temuan Terbaru</div>
+              <div class="panel-title-sub">Laporan terakhir masuk ke sistem</div>
+            </div>
+            <span class="panel-link" data-goto="temuan">Lihat semua <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></span>
+          </div>
+          <div class="table-panel" style="border:none; box-shadow:none;">
+            <table>
+              <thead><tr><th>ID Temuan</th><th>Lokasi</th><th>Kategori</th><th>PIC</th><th>Status</th></tr></thead>
+              <tbody id="recentTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Riwayat Aktivitas</div>
+              <div class="panel-title-sub">Log update status &amp; komentar</div>
+            </div>
+          </div>
+          <div id="activityFeed"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ VIEW: DAFTAR TEMUAN ============ -->
+    <div class="view" id="view-temuan">
+      <div class="filter-bar">
+        <span class="filter-tag">Filter:</span>
+        <select id="fArea"><option value="">Semua Area</option></select>
+        <select id="fDept"><option value="">Semua Departemen</option></select>
+        <select id="fCat"><option value="">Semua Kategori</option></select>
+        <input type="date" id="fDate" value="">
+        <select id="fStatus">
+          <option value="">Semua Status</option>
+          <option value="open">Open</option>
+          <option value="progress">On Progress</option>
+          <option value="pending">Pending</option>
+          <option value="closed">Closed</option>
+        </select>
+        <select id="fPic"><option value="">Semua PIC</option></select>
+        <span class="filter-count ml-auto" id="filterCount"></span>
+        <span class="filter-reset ml-4" id="filterReset">Reset filter</span>
+      </div>
+
+      <div class="table-panel">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th><th>Tanggal</th><th>Lokasi</th><th>Kategori</th><th>Deskripsi</th><th>PIC</th><th>Foto Bukti</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+        <div class="table-foot">
+          <span id="tableFootInfo">Menampilkan — dari — temuan</span>
+          <div class="pagination" id="pagination"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ VIEW: ANALISIS TREN ============ -->
+    <div class="view" id="view-analisis">
+      <div class="stat-strip" id="analisisStats"></div>
+
+      <div class="charts-row">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Tren Kinerja HSE</div>
+              <div class="panel-title-sub">Rasio temuan baru vs diselesaikan</div>
+            </div>
+            <div class="seg" id="segTrendAnalisis"><span class="active" data-mode="monthly">Bulanan</span><span data-mode="weekly">Mingguan</span></div>
+          </div>
+          <div class="chart-wrap" style="height:280px;"><canvas id="trendChart2"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Distribusi Kategori</div>
+              <div class="panel-title-sub">Risiko terbanyak periode ini</div>
+            </div>
+          </div>
+          <div class="chart-wrap" style="height:190px;"><canvas id="catChart2"></canvas></div>
+          <div class="legend-list" id="catLegend2"></div>
+        </div>
+      </div>
+
+      <div class="charts-row">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Pemetaan Area</div>
+              <div class="panel-title-sub">Volume temuan berdasarkan lokasi fasilitas</div>
+            </div>
+          </div>
+          <div class="chart-wrap" style="height:240px;"><canvas id="areaChart"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Kinerja Penanganan PIC</div>
+              <div class="panel-title-sub">Tingkat respons &amp; penyelesaian</div>
+            </div>
+          </div>
+          <div class="table-panel" style="border:none; box-shadow:none;">
+            <table>
+              <thead><tr><th>#</th><th>PIC</th><th>Ditangani</th><th>Closed</th><th>Tingkat Selesai</th></tr></thead>
+              <tbody id="leaderboardBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ VIEW: LAPORAN ============ -->
+    <div class="view" id="view-laporan">
+      <div class="bottom-grid" style="margin-top:0;">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Generator Laporan</div>
+              <div class="panel-title-sub">Unduh data sesuai format standar pelaporan HSE</div>
+            </div>
+          </div>
+          <div class="report-grid">
+            <div class="report-card" id="rcExcel">
+              <div class="rc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></div>
+              <div class="rc-name">Data Excel Mentah</div>
+              <div class="rc-desc">Seluruh temuan sesuai filter aktif (.xlsx).</div>
+            </div>
+            <div class="report-card" id="rcPdf">
+              <div class="rc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></div>
+              <div class="rc-name">Presentasi PDF</div>
+              <div class="rc-desc">Ringkasan visual siap cetak untuk manajemen.</div>
+            </div>
+            <div class="report-card" id="rcMonthly">
+              <div class="rc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+              <div class="rc-name">Rekap Bulanan HSE</div>
+              <div class="rc-desc" id="rcMonthlyDesc">Ringkasan KPI dan performa bulan berjalan.</div>
+            </div>
+            <div class="report-card" id="rcArea">
+              <div class="rc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></div>
+              <div class="rc-name">Analisis per Area</div>
+              <div class="rc-desc">Perbandingan tingkat risiko antar fasilitas.</div>
+            </div>
+          </div>
+
+          <div id="reportPreview" style="display:none; margin-top:20px; background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:20px;">
+            <div class="panel-title" style="font-size:16px; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+              <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+              Pratinjau Rekap — Juli 2026
+            </div>
+            <div id="reportPreviewBody" style="font-size:13.5px; color:var(--text-dim); line-height:1.8;"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Riwayat Ekspor</div>
+              <div class="panel-title-sub">Log dokumen yang telah diunduh</div>
+            </div>
+          </div>
+          <div class="table-panel" style="border:none; box-shadow:none;">
+            <table>
+              <thead><tr><th>Waktu</th><th>Jenis</th><th>Status</th></tr></thead>
+              <tbody id="exportLogBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ VIEW: MASTER PIC & AREA ============ -->
+    <div class="view" id="view-pic">
+      <div class="table-panel">
+        <table>
+          <thead><tr><th>PIC</th><th>Departemen</th><th>Total Ditangani</th><th>Open</th><th>On Progress</th><th>Closed</th><th>Tingkat Penyelesaian</th></tr></thead>
+          <tbody id="picTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="view" id="view-area">
+      <div class="table-panel">
+        <table>
+          <thead><tr><th>Area Fasilitas</th><th>Total Temuan</th><th>Risiko Open</th><th>Tuntas</th><th>Kategori Dominan</th><th>Koordinat Referensi</th></tr></thead>
+          <tbody id="areaTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL: Input Temuan -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title flex items-center gap-2">
+        <svg class="w-6 h-6 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg>
+        Registrasi Temuan Baru
+      </div>
+      <button class="modal-close" id="closeModalBtn">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label>Tanggal Kejadian</label><input type="date" id="inpDate" value="2026-07-06"></div>
+      <div class="field"><label>Kategori Risiko</label><select id="inpCat"></select></div>
+      <div class="field"><label>Area / Lokasi Fisik</label><input type="text" id="inpArea" placeholder="cth. Gedung A – Lantai 3"></div>
+      <div class="field"><label>Koordinat (opsional)</label><input type="text" id="inpCoord" placeholder="-3.0567, 104.7458" class="mono"></div>
+      <div class="field full"><label>Deskripsi Detail Kondisi</label><textarea id="inpDesc" placeholder="Jelaskan kondisi tidak aman (unsafe condition) atau perilaku (unsafe act) secara rinci..."></textarea></div>
+      <div class="field"><label>Penanggung Jawab (PIC)</label><select id="inpPic"></select></div>
+      <div class="field"><label>Departemen Terkait</label><select id="inpDept"><option>Operasional</option><option>Konstruksi</option><option>Engineering</option><option>Umum</option></select></div>
+      <div class="field full">
+        <label>Foto Temuan (Sebelum)</label>
+        <div class="upload-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>
+          Seret file atau klik untuk unggah (JPG/PNG maks 5MB)
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="cancelModalBtn">Batal</button>
+      <button class="btn btn-primary" id="saveModalBtn">
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+        Simpan Temuan
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Detail Temuan -->
+<div class="overlay" id="detailOverlay">
+  <div class="modal wide">
+    <div class="detail-top">
+      <div class="modal-head-left">
+        <div class="modal-title font-mono text-xl" id="detailTitle">HSE-0000</div>
+        <span class="badge" id="detailBadge">Open</span>
+      </div>
+      <button class="modal-close" id="closeDetailBtn">&times;</button>
+    </div>
+    <div class="detail-grid">
+      <div class="detail-col">
+        <div class="detail-meta" id="detailMeta"></div>
+        <div class="photo-set-label">Deskripsi Lengkap</div>
+        <div class="detail-desc" id="detailDesc"></div>
+
+        <div class="photo-set">
+          <div class="photo-set-label">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>
+            Kondisi Sebelum (Unsafe)
+          </div>
+          <div class="photo-grid" id="photosBefore"></div>
+        </div>
+        <div class="photo-set">
+          <div class="photo-set-label">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5"><path d="m5 13 4 4L19 7"/></svg>
+            Kondisi Sesudah (Safe)
+          </div>
+          <div class="photo-grid" id="photosAfter"></div>
+        </div>
+
+        <div class="field" style="margin-top:24px; background:var(--panel-2); padding:16px; border-radius:12px; border:1px solid var(--border);">
+          <label class="!text-[11px]">Update Status Tindak Lanjut</label>
+          <div class="flex gap-2 mt-2">
+            <select id="detailStatusSelect" class="flex-1 !bg-var(--bg)">
+              <option value="open">Open (Belum ditangani)</option>
+              <option value="progress">On Progress (Sedang dikerjakan)</option>
+              <option value="pending">Pending (Menunggu material/izin)</option>
+              <option value="closed">Closed (Selesai & Aman)</option>
+            </select>
+            <button class="btn btn-primary" id="detailStatusSave">Perbarui</button>
+          </div>
+        </div>
+      </div>
+      <div class="detail-col flex flex-col">
+        <div class="panel-title" style="font-size:16px; margin-bottom:20px;">Timeline Tindak Lanjut</div>
+        <div class="timeline flex-1" id="detailTimeline"></div>
+        <div class="comment-box mt-auto">
+          <input type="text" id="detailCommentInput" placeholder="Ketik komentar atau catatan perbaikan...">
+          <button class="btn btn-primary px-4" id="detailCommentBtn">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">Notifikasi sistem.</div>
+
+<script>
+// =====================================================================
+// LOGIN LOGIC
+// =====================================================================
+document.getElementById('doLoginBtn').addEventListener('click', function() {
+  const btn = this;
+  const user = document.getElementById('loginUser').value;
+  const pass = document.getElementById('loginPass').value;
+  
+  // Basic dummy check (can be anything for demo)
+  if(!user || !pass) {
+    alert("Mohon isi username dan password.");
+    return;
+  }
+
+  // Visual loading state
+  const originalHtml = btn.innerHTML;
+  btn.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Memverifikasi...`;
+  
+  setTimeout(() => {
+    const screen = document.getElementById('loginScreen');
+    screen.classList.add('opacity-0');
+    setTimeout(() => {
+      screen.style.display = 'none';
+      showToast(`Selamat datang, ${user}. Sesi monitoring aktif.`);
+    }, 500);
+  }, 800);
+});
+
+// =====================================================================
+// DUMMY DATA
+// =====================================================================
+const areas = ['Gedung A','Gedung B','Workshop','Area Parkir','Kantor Pusat', 'Plant C'];
+const depts = ['Operasional','Konstruksi','Engineering','Umum', 'HSE'];
+const cats  = ['Alat Pelindung Diri (APD)','Housekeeping','Alat Berat','Potensi Kebakaran','Instalasi Listrik'];
+const pics  = ['Abdel Hakim','Sonny Irawan','Anwar','Reki Akbar','Adeng'];
+const catColor = {'Alat Pelindung Diri (APD)':'#ff6a00', 'Housekeeping':'#ffcc00', 'Alat Berat':'#3b82f6', 'Potensi Kebakaran':'#ef4444', 'Instalasi Listrik':'#10b981'};
+
+let findings = [
+  {id:'HSE-0140', dateVal:'2026-07-05', date:'05 Jul 2026', area:'Gedung A', floor:'Lt. 3', dept:'Konstruksi', cat:'Alat Pelindung Diri (APD)', desc:'Pekerja tidak menggunakan helm safety di area proyek renovasi lantai 3.', pic:'Abdel Hakim', coord:'-3.0567, 104.7458', photosBefore:2, photosAfter:0, status:'open'},
+  {id:'HSE-0139', dateVal:'2026-07-05', date:'05 Jul 2026', area:'Workshop', floor:'Bay 2', dept:'Operasional', cat:'Alat Berat', desc:'Forklift beroperasi tanpa alarm mundur yang berfungsi. Berisiko menabrak pekerja.', pic:'Anwar', coord:'-3.0601, 104.7490', photosBefore:3, photosAfter:0, status:'progress'},
+  {id:'HSE-0138', dateVal:'2026-07-04', date:'04 Jul 2026', area:'Gedung B', floor:'Lt. 1', dept:'Umum', cat:'Potensi Kebakaran', desc:'Tabung APAR kadaluarsa sejak bulan lalu belum diganti.', pic:'Sonny Irawan', coord:'-3.0554, 104.7471', photosBefore:1, photosAfter:0, status:'pending'},
+  {id:'HSE-0137', dateVal:'2026-07-03', date:'03 Jul 2026', area:'Area Parkir', floor:'Blok C', dept:'Umum', cat:'Housekeeping', desc:'Tumpahan oli tidak segera dibersihkan, berisiko menyebabkan slip and fall.', pic:'Abdel Hakim', coord:'-3.0589, 104.7502', photosBefore:2, photosAfter:2, status:'closed'},
+  {id:'HSE-0136', dateVal:'2026-07-02', date:'02 Jul 2026', area:'Gedung A', floor:'Lt. 5', dept:'Engineering', cat:'Instalasi Listrik', desc:'Kabel terminal terbuka dekat area basah pantry (potensi short circuit).', pic:'Reki Akbar', coord:'-3.0567, 104.7460', photosBefore:2, photosAfter:0, status:'open'},
+  {id:'HSE-0135', dateVal:'2026-07-01', date:'01 Jul 2026', area:'Gedung B', floor:'Lt. 2', dept:'Konstruksi', cat:'Alat Pelindung Diri (APD)', desc:'Sarung tangan safety khusus las tidak tersedia di pos kerja.', pic:'Sonny Irawan', coord:'-3.0554, 104.7473', photosBefore:1, photosAfter:1, status:'closed'},
+  {id:'HSE-0134', dateVal:'2026-06-30', date:'30 Jun 2026', area:'Workshop', floor:'Bay 1', dept:'Operasional', cat:'Housekeeping', desc:'Jalur evakuasi terhalang tumpukan material sisa proyek.', pic:'Anwar', coord:'-3.0602, 104.7488', photosBefore:3, photosAfter:0, status:'progress'},
+  {id:'HSE-0133', dateVal:'2026-06-29', date:'29 Jun 2026', area:'Gedung A', floor:'Lt. 1', dept:'Umum', cat:'Potensi Kebakaran', desc:'Jalur sprinkler tertutup rak penyimpanan arsip yang menumpuk tinggi.', pic:'Adeng', coord:'-3.0568, 104.7457', photosBefore:2, photosAfter:2, status:'closed'},
+  {id:'HSE-0132', dateVal:'2026-06-28', date:'28 Jun 2026', area:'Kantor Pusat', floor:'Lt. 4', dept:'Umum', cat:'Instalasi Listrik', desc:'Stop kontak menumpuk (daisy chain) di ruang server kecil.', pic:'Reki Akbar', coord:'-3.0540, 104.7449', photosBefore:2, photosAfter:0, status:'open'},
+  {id:'HSE-0131', dateVal:'2026-06-27', date:'27 Jun 2026', area:'Gedung B', floor:'Lt. 3', dept:'Engineering', cat:'Alat Berat', desc:'Crane tower belum menjalani inspeksi berkala bulanan.', pic:'Anwar', coord:'-3.0555, 104.7475', photosBefore:1, photosAfter:0, status:'pending'},
+  {id:'HSE-0130', dateVal:'2026-06-25', date:'25 Jun 2026', area:'Area Parkir', floor:'Blok A', dept:'Umum', cat:'Alat Pelindung Diri (APD)', desc:'Petugas parkir tidak mengenakan rompi reflektif saat shift malam.', pic:'Adeng', coord:'-3.0588, 104.7500', photosBefore:2, photosAfter:2, status:'closed'},
+];
+
+let activity = [
+  {id:'a1', ref:'HSE-0137', who:'Sonny Irawan', action:'memverifikasi penyelesaian pada', time:'2 jam lalu', color:'var(--green)'},
+  {id:'a2', ref:'HSE-0134', who:'Abdel Hakim', action:'mengunggah foto perbaikan untuk', time:'5 jam lalu', color:'var(--blue)'},
+  {id:'a3', ref:'HSE-0139', who:'Anwar', action:'mengubah status menjadi On Progress pada', time:'kemarin, 16:40', color:'var(--amber)'},
+  {id:'a4', ref:'HSE-0140', who:'System', action:'mencatat temuan baru', time:'kemarin, 09:12', color:'var(--red)'},
+  {id:'a6', ref:'HSE-0136', who:'Reki Akbar', action:'mencatat temuan baru', time:'3 hari lalu', color:'var(--red)'},
+];
+
+const statusMeta = {
+  open:{label:'Open', cls:'open'},
+  progress:{label:'On Progress', cls:'progress'},
+  pending:{label:'Pending', cls:'pending'},
+  closed:{label:'Closed', cls:'closed'},
+};
+
+let idCounter = 141;
+let currentView = 'dashboard';
+let currentDetailId = null;
+let page = 1;
+const pageSize = 8;
+const filters = {area:'', dept:'', cat:'', status:'', pic:'', date:'', q:''};
+
+function initials(name){ return name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase(); }
+function fmtPct(n){ return Math.round(n) + '%'; }
+
+// =====================================================================
+// FILTER OPTIONS
+// =====================================================================
+function fillSelect(sel, values){
+  values.forEach(v=>{
+    const o = document.createElement('option');
+    o.value = v; o.textContent = v;
+    sel.appendChild(o);
+  });
+}
+fillSelect(document.getElementById('fArea'), areas);
+fillSelect(document.getElementById('fDept'), depts);
+fillSelect(document.getElementById('fCat'), cats);
+fillSelect(document.getElementById('fPic'), pics);
+fillSelect(document.getElementById('inpCat'), cats);
+fillSelect(document.getElementById('inpPic'), pics);
+
+function applyFilters(){
+  const q = filters.q.trim().toLowerCase();
+  return findings.filter(f=>{
+    if(filters.area && f.area !== filters.area) return false;
+    if(filters.dept && f.dept !== filters.dept) return false;
+    if(filters.cat && f.cat !== filters.cat) return false;
+    if(filters.status && f.status !== filters.status) return false;
+    if(filters.pic && f.pic !== filters.pic) return false;
+    if(filters.date && f.dateVal < filters.date) return false;
+    if(q && !(f.id.toLowerCase().includes(q) || f.area.toLowerCase().includes(q) || f.pic.toLowerCase().includes(q) || f.desc.toLowerCase().includes(q))) return false;
+    return true;
+  }).sort((a,b)=> b.dateVal.localeCompare(a.dateVal));
+}
+
+function shortPicName(name){
+  const parts = name.split(' ');
+  return parts[0] + ' ' + (parts.length>1 ? parts[1][0]+'.' : '');
+}
+
+// =====================================================================
+// RENDER FUNCTIONS
+// =====================================================================
+function renderKPI(){
+  const total = findings.length;
+  const open = findings.filter(f=>f.status==='open').length;
+  const progress = findings.filter(f=>f.status==='progress').length;
+  const closed = findings.filter(f=>f.status==='closed').length;
+  document.getElementById('kpiTotal').textContent = total;
+  document.getElementById('kpiOpen').textContent = open;
+  document.getElementById('kpiProgress').textContent = progress;
+  document.getElementById('kpiClosed').textContent = closed;
+  document.getElementById('kpiClosedSub').innerHTML = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg> Selesai ${fmtPct(closed/total*100)} dari total`;
+  document.getElementById('navCountTemuan').textContent = total;
+}
+
+function renderRecentTable(){
+  const body = document.getElementById('recentTableBody');
+  const recent = [...findings].sort((a,b)=> b.dateVal.localeCompare(a.dateVal)).slice(0,5);
+  body.innerHTML = recent.map(f => `
+    <tr data-id="${f.id}">
+      <td class="id-cell">${f.id}</td>
+      <td class="row-loc"><b>${f.area}</b> <span class="text-xs text-[var(--text-faint)]">· ${f.floor}</span></td>
+      <td>${f.cat}</td>
+      <td>${shortPicName(f.pic)}</td>
+      <td><span class="badge ${statusMeta[f.status].cls}">${statusMeta[f.status].label}</span></td>
+    </tr>
+  `).join('');
+  body.querySelectorAll('tr').forEach(tr=> tr.addEventListener('click', ()=> openDetail(tr.dataset.id)));
+}
+
+function renderTemuanTable(){
+  const filtered = applyFilters();
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  if(page > totalPages) page = totalPages;
+  const start = (page-1)*pageSize;
+  const pageItems = filtered.slice(start, start+pageSize);
+
+  const body = document.getElementById('tableBody');
+  if(pageItems.length === 0){
+    body.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-faint); padding:40px;">Tidak ada temuan yang cocok dengan filter.</td></tr>`;
+  } else {
+    body.innerHTML = pageItems.map(f => `
+      <tr data-id="${f.id}">
+        <td class="id-cell">${f.id}</td>
+        <td class="text-[13px]">${f.date}</td>
+        <td class="row-loc"><b>${f.area}</b><br><span class="text-xs">${f.floor}</span></td>
+        <td class="text-[13px] font-semibold">${f.cat}</td>
+        <td style="max-width:240px; color:var(--text-dim); line-height:1.4" class="text-[13px] truncate whitespace-normal line-clamp-2">${f.desc}</td>
+        <td><div class="pic-cell"><div class="avatar">${initials(f.pic)}</div>${shortPicName(f.pic)}</div></td>
+        <td><div class="photo-chip">${Array.from({length:Math.min(f.photosBefore,3)}).map(()=>`<div class="ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg></div>`).join('')}</div></td>
+        <td><span class="badge ${statusMeta[f.status].cls}">${statusMeta[f.status].label}</span></td>
+      </tr>
+    `).join('');
+  }
+  body.querySelectorAll('tr[data-id]').forEach(tr=> tr.addEventListener('click', ()=> openDetail(tr.dataset.id)));
+
+  document.getElementById('tableFootInfo').textContent = filtered.length === 0
+    ? 'Data kosong'
+    : `Menampilkan ${start+1}–${Math.min(start+pageSize, filtered.length)} dari ${filtered.length} temuan`;
+  document.getElementById('filterCount').textContent = `${filtered.length} hasil pencarian`;
+
+  const pag = document.getElementById('pagination');
+  let html = `<button class="page-btn" ${page===1?'disabled':''} id="pagePrev">‹</button>`;
+  for(let i=1;i<=totalPages;i++){
+    html += `<button class="page-btn ${i===page?'active':''}" data-page="${i}">${i}</button>`;
+  }
+  html += `<button class="page-btn" ${page===totalPages?'disabled':''} id="pageNext">›</button>`;
+  pag.innerHTML = html;
+  pag.querySelectorAll('[data-page]').forEach(b=> b.addEventListener('click', ()=>{ page = parseInt(b.dataset.page); renderTemuanTable(); }));
+  const prevBtn = document.getElementById('pagePrev'), nextBtn = document.getElementById('pageNext');
+  if(prevBtn) prevBtn.addEventListener('click', ()=>{ if(page>1){page--; renderTemuanTable();} });
+  if(nextBtn) nextBtn.addEventListener('click', ()=>{ if(page<totalPages){page++; renderTemuanTable();} });
+}
+
+function renderActivity(){
+  const el = document.getElementById('activityFeed');
+  if(activity.length===0){ el.innerHTML = '<div class="activity-empty">Belum ada aktivitas tercatat.</div>'; return; }
+  el.innerHTML = [...activity].reverse().slice(0,6).map(a => `
+    <div class="activity-item">
+      <div class="activity-dot" style="background:${a.color}"></div>
+      <div>
+        <div class="activity-text"><b>${a.who}</b> ${a.action} <b>${a.ref}</b></div>
+        <div class="activity-time">${a.time}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderPicTable(){
+  const body = document.getElementById('picTableBody');
+  body.innerHTML = pics.map(p=>{
+    const items = findings.filter(f=>f.pic===p);
+    const total = items.length;
+    const open = items.filter(f=>f.status==='open').length;
+    const progress = items.filter(f=>f.status==='progress').length;
+    const closed = items.filter(f=>f.status==='closed').length;
+    const dept = items[0] ? items[0].dept : depts[pics.indexOf(p)%depts.length];
+    const rate = total ? Math.round(closed/total*100) : 0;
+    return `<tr>
+      <td><div class="pic-cell"><div class="avatar shadow-sm">${initials(p)}</div><span class="font-bold">${p}</span></div></td>
+      <td class="text-sm">${dept}</td>
+      <td class="mono font-bold text-[15px]">${total}</td>
+      <td class="mono font-bold text-[15px]" style="color:var(--red);">${open}</td>
+      <td class="mono font-bold text-[15px]" style="color:var(--amber);">${progress}</td>
+      <td class="mono font-bold text-[15px]" style="color:var(--green);">${closed}</td>
+      <td><div class="bar-cell" style="max-width:160px;"><div class="bar-track"><div class="bar-fill" style="width:${rate}%; background:var(--green);"></div></div><span class="mono font-bold" style="font-size:12.5px;">${rate}%</span></div></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderAreaTable(){
+  const body = document.getElementById('areaTableBody');
+  body.innerHTML = areas.map(ar=>{
+    const items = findings.filter(f=>f.area===ar);
+    const total = items.length;
+    const open = items.filter(f=>f.status==='open' || f.status==='progress' || f.status==='pending').length;
+    const closed = items.filter(f=>f.status==='closed').length;
+    const catCount = {};
+    items.forEach(f=> catCount[f.cat] = (catCount[f.cat]||0)+1);
+    const domCat = Object.entries(catCount).sort((a,b)=>b[1]-a[1])[0];
+    return `<tr>
+      <td class="font-bold text-[15px]">${ar}</td>
+      <td class="mono font-bold">${total}</td>
+      <td class="mono font-bold" style="color:var(--red);">${open}</td>
+      <td class="mono font-bold" style="color:var(--green);">${closed}</td>
+      <td class="text-sm">${domCat ? domCat[0]+' <span class="text-[var(--text-faint)]">('+domCat[1]+')</span>' : '—'}</td>
+      <td class="mono" style="font-size:13px; color:var(--text-faint);">${items[0] ? items[0].coord : '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// =====================================================================
+// CHARTS
+// =====================================================================
+let trendChart, trendChart2, catChart, catChart2, areaChart;
+
+function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+function trendData(mode){
+  if(mode === 'weekly'){
+    return { labels:['Wk 1','Wk 2','Wk 3','Wk 4','Wk 5','Wk 6'], newF:[5,7,4,6,8,5], done:[3,6,5,7,6,7] };
+  }
+  return { labels:['Feb','Mar','Apr','Mei','Jun','Jul'], newF:[14,19,16,22,25,18], done:[10,15,14,18,21,20] };
+}
+
+function buildTrendConfig(mode){
+  const d = trendData(mode);
+  const textDim = cssVar('--text-dim');
+  const borderCol = cssVar('--border');
+  return {
+    type:'line',
+    data:{
+      labels:d.labels,
+      datasets:[
+        {label:'Temuan Baru (Risiko)', data:d.newF, borderColor:'#ff6a00', backgroundColor:'rgba(255,106,0,.1)', tension:.4, fill:true, pointRadius:4, pointBackgroundColor:'#ff6a00', borderWidth: 2},
+        {label:'Tuntas (Aman)', data:d.done, borderColor:'#10b981', backgroundColor:'rgba(16,185,129,.1)', tension:.4, fill:true, pointRadius:4, pointBackgroundColor:'#10b981', borderWidth: 2},
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'top', align:'end', labels:{boxWidth:10, boxHeight:10, usePointStyle:true, padding:16, color:textDim, font:{weight:'bold'}}}},
+      scales:{
+        x:{grid:{display:false}, border:{color:borderCol}, ticks:{color:textDim}},
+        y:{grid:{color:cssVar('--border-soft'), borderDash:[4,4]}, border:{display:false}, beginAtZero:true, ticks:{color:textDim, stepSize:5}}
+      }
+    }
+  };
+}
+
+function catChartData(){
+  return cats.map(c=>({label:c, value:findings.filter(f=>f.cat===c).length, color:catColor[c]}));
+}
+
+function buildCatConfig(){
+  const d = catChartData();
+  return {
+    type:'doughnut',
+    data:{ labels:d.map(c=>c.label), datasets:[{data:d.map(c=>c.value), backgroundColor:d.map(c=>c.color), borderWidth:2, borderColor:cssVar('--panel')}] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'70%', plugins:{legend:{display:false}} }
+  };
+}
+
+function renderCatLegend(elId){
+  const d = catChartData();
+  const total = d.reduce((s,c)=>s+c.value,0) || 1;
+  document.getElementById(elId).innerHTML = d.map(c => `
+    <div class="legend-row">
+      <div class="legend-dot shadow-sm" style="background:${c.color}"></div>
+      <div class="legend-name truncate">${c.label}</div>
+      <div class="legend-val">${Math.round(c.value/total*100)}%</div>
+    </div>
+  `).join('');
+}
+
+function buildAreaConfig(){
+  const data = areas.map(a=> findings.filter(f=>f.area===a).length);
+  return {
+    type:'bar',
+    data:{ labels:areas, datasets:[{label:'Volume Temuan', data, backgroundColor:'#3b82f6', borderRadius:6, maxBarThickness:40}] },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{grid:{display:false}, border:{color:cssVar('--border')}, ticks:{color:cssVar('--text-dim'), font:{weight:'600'}}},
+        y:{grid:{color:cssVar('--border-soft')}, border:{display:false}, beginAtZero:true, ticks:{color:cssVar('--text-dim'), stepSize:2}}
+      }
+    }
+  };
+}
+
+function initCharts(){
+  Chart.defaults.font.family = "'Inter',sans-serif";
+  trendChart = new Chart(document.getElementById('trendChart'), buildTrendConfig('monthly'));
+  trendChart2 = new Chart(document.getElementById('trendChart2'), buildTrendConfig('monthly'));
+  catChart = new Chart(document.getElementById('catChart'), buildCatConfig());
+  catChart2 = new Chart(document.getElementById('catChart2'), buildCatConfig());
+  areaChart = new Chart(document.getElementById('areaChart'), buildAreaConfig());
+  renderCatLegend('catLegend');
+  renderCatLegend('catLegend2');
+}
+
+// =====================================================================
+// MODAL & DETAIL LOGIC
+// =====================================================================
+function openDetail(id){
+  const f = findings.find(x=>x.id===id);
+  if(!f) return;
+  currentDetailId = id;
+  document.getElementById('detailTitle').textContent = f.id;
+  const badge = document.getElementById('detailBadge');
+  badge.className = 'badge ' + statusMeta[f.status].cls;
+  badge.textContent = statusMeta[f.status].label;
+  document.getElementById('detailMeta').innerHTML = `
+    <div class="detail-meta-item"><label>Tanggal Inspeksi</label><div>${f.date}</div></div>
+    <div class="detail-meta-item"><label>Kategori Risiko</label><div>${f.cat}</div></div>
+    <div class="detail-meta-item"><label>Lokasi Spesifik</label><div>${f.area} — ${f.floor}</div></div>
+    <div class="detail-meta-item"><label>Koordinat GPS</label><div class="mono" style="font-size:13px; color:var(--text-dim)">${f.coord}</div></div>
+    <div class="detail-meta-item"><label>Departemen Terkait</label><div>${f.dept}</div></div>
+    <div class="detail-meta-item"><label>Penanggung Jawab (PIC)</label><div>${f.pic}</div></div>
+  `;
+  document.getElementById('detailDesc').textContent = f.desc;
+  document.getElementById('photosBefore').innerHTML = f.photosBefore > 0
+    ? Array.from({length:f.photosBefore}).map(()=>`<div class="photo-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg></div>`).join('')
+    : '<div style="font-size:13px; color:var(--text-faint); padding:10px 0; grid-column:1/-1;">Belum ada dokumentasi.</div>';
+  document.getElementById('photosAfter').innerHTML = f.photosAfter > 0
+    ? Array.from({length:f.photosAfter}).map(()=>`<div class="photo-ph after"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m5 13 4 4L19 7"/></svg></div>`).join('')
+    : '<div style="font-size:13px; color:var(--text-faint); padding:10px 0; grid-column:1/-1;">Menunggu perbaikan & verifikasi HSE.</div>';
+  document.getElementById('detailStatusSelect').value = f.status;
+
+  const relatedActivity = activity.filter(a=>a.ref===id);
+  const timelineEl = document.getElementById('detailTimeline');
+  const items = relatedActivity.length ? [...relatedActivity].reverse() : [{who:'System', action:'mencatat temuan', time:f.date, color:'var(--red)'}];
+  timelineEl.innerHTML = items.map(a=>`
+    <div class="timeline-item">
+      <div class="timeline-dot shadow-sm" style="background:${a.color}"></div>
+      <div>
+        <div class="activity-text text-[13.5px]"><b>${a.who}</b> ${a.action}</div>
+        <div class="activity-time">${a.time}</div>
+      </div>
+    </div>
+  `).join('');
+
+  document.getElementById('detailOverlay').classList.add('show');
+}
+function closeDetail(){ document.getElementById('detailOverlay').classList.remove('show'); currentDetailId = null; }
+document.getElementById('closeDetailBtn').addEventListener('click', closeDetail);
+document.getElementById('detailOverlay').addEventListener('click', e=>{ if(e.target.id==='detailOverlay') closeDetail(); });
+
+document.getElementById('detailStatusSave').addEventListener('click', ()=>{
+  if(!currentDetailId) return;
+  const f = findings.find(x=>x.id===currentDetailId);
+  const newStatus = document.getElementById('detailStatusSelect').value;
+  if(newStatus === f.status){ showToast('Status tidak berubah.'); return; }
+  f.status = newStatus;
+  if(newStatus === 'closed' && f.photosAfter === 0) f.photosAfter = Math.max(1, f.photosBefore);
+  activity.push({id:'a'+Date.now(), ref:f.id, who:'Anda', action:'update status: '+statusMeta[newStatus].label, time:'baru saja', color:'var(--blue)'});
+  renderAll();
+  openDetail(f.id);
+  showToast(`Status temuan ${f.id} berhasil diperbarui.`);
+});
+
+// View Switching
+const viewMeta = {
+  dashboard:{title:'Dashboard HSE', sub:'Pemantauan kondisi keselamatan kerja terkini.'},
+  temuan:{title:'Registri Temuan', sub:'Daftar lengkap laporan kondisi tidak aman (Unsafe Condition & Act)'},
+  analisis:{title:'Analisis Kinerja HSE', sub:'Metrik penyelesaian dan identifikasi area berisiko tinggi'},
+  laporan:{title:'Pusat Pelaporan', sub:'Ekspor dokumen dan statistik untuk rapat manajemen HSE'},
+  pic:{title:'Master Data PIC', sub:'Kinerja departemen dalam menindaklanjuti temuan'},
+  area:{title:'Master Data Area', sub:'Pemetaan fasilitas dan titik koordinat rawan'},
+};
+
+function switchView(view){
+  currentView = view;
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+view).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=> n.classList.toggle('active', n.dataset.view===view));
+  document.getElementById('pageTitle').textContent = viewMeta[view].title;
+  document.getElementById('pageSub').innerHTML = viewMeta[view].sub;
+  if(view==='temuan'){ page = 1; renderTemuanTable(); }
+  if(view==='analisis'){ renderAnalisisStats(); renderLeaderboard(); }
+  if(view==='pic'){ renderPicTable(); }
+  if(view==='area'){ renderAreaTable(); }
+}
+
+document.querySelectorAll('.nav-item[data-view]').forEach(item=> item.addEventListener('click', ()=> switchView(item.dataset.view)));
+document.querySelectorAll('.panel-link[data-goto]').forEach(el=> el.addEventListener('click', ()=> switchView(el.dataset.goto)));
+
+// Theme Toggle
+document.getElementById('themeToggle').addEventListener('click', ()=>{
+  const html = document.documentElement;
+  const isLight = html.getAttribute('data-theme') === 'light';
+  html.setAttribute('data-theme', isLight ? 'dark' : 'light');
+  document.getElementById('themeIconMoon').style.display = isLight ? '' : 'none';
+  document.getElementById('themeIconSun').style.display = isLight ? 'none' : '';
+  // Update Charts colors slightly
+  Chart.instances.forEach(chart => {
+    chart.options.scales.x.ticks.color = cssVar('--text-dim');
+    if(chart.options.scales.y) chart.options.scales.y.ticks.color = cssVar('--text-dim');
+    chart.update();
+  });
+});
+
+// Toast Utility
+const toast = document.getElementById('toast');
+let toastTimer;
+function showToast(msg){
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> toast.classList.remove('show'), 3000);
+}
+
+// Analisis & Leaderboard specific
+function renderAnalisisStats(){
+  const total = findings.length;
+  const closed = findings.filter(f=>f.status==='closed').length;
+  document.getElementById('analisisStats').innerHTML = `
+    <div class="stat-box"><div class="stat-box-label">Total Temuan</div><div class="stat-box-val">${total}</div><div class="stat-box-sub">Periode berjalan</div></div>
+    <div class="stat-box"><div class="stat-box-label">Tingkat Penutupan</div><div class="stat-box-val text-[var(--green)]">${Math.round(closed/total*100)}%</div><div class="stat-box-sub">${closed} Tuntas</div></div>
+    <div class="stat-box"><div class="stat-box-label">Risiko Open/Pending</div><div class="stat-box-val text-[var(--red)]">${total - closed}</div><div class="stat-box-sub">Butuh perhatian</div></div>
+    <div class="stat-box"><div class="stat-box-label">Area Terdampak</div><div class="stat-box-val">${new Set(findings.map(f=>f.area)).size}</div><div class="stat-box-sub">Fasilitas tercatat</div></div>
+  `;
+}
+function renderLeaderboard(){
+  document.getElementById('leaderboardBody').innerHTML = pics.map(p=>({p, t:findings.filter(f=>f.pic===p).length, c:findings.filter(f=>f.pic===p&&f.status==='closed').length}))
+    .map(r=>({...r, rate:r.t?Math.round(r.c/r.t*100):0})).sort((a,b)=>b.rate-a.rate)
+    .map((r,i)=>`<tr><td><div class="rank-num ${i===0?'top':''}">${i+1}</div></td><td class="font-bold">${shortPicName(r.p)}</td><td class="mono">${r.t}</td><td class="mono text-[var(--green)]">${r.c}</td><td><div class="bar-cell"><div class="bar-track"><div class="bar-fill" style="width:${r.rate}%;"></div></div><span class="mono text-xs font-bold">${r.rate}%</span></div></td></tr>`).join('');
+}
+
+// Init everything
+function renderAll(){
+  renderKPI(); renderRecentTable(); renderActivity();
+  [catChart, catChart2].forEach(c=>{ if(c){ c.data.datasets[0].data = catChartData().map(x=>x.value); c.update(); }});
+  if(areaChart){ areaChart.data.datasets[0].data = areas.map(a=>findings.filter(f=>f.area===a).length); areaChart.update(); }
+  renderCatLegend('catLegend'); renderCatLegend('catLegend2');
+}
+
+initCharts();
+renderAll();
+</script>
+</body>
+</html>

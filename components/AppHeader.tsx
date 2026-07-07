@@ -3,26 +3,18 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ThemeToggle } from "./ThemeToggle";
+import { getGreeting } from "@/lib/constants";
 import type { Profile } from "@/lib/queries";
 
-type NavItem = { href: string; label: string };
-
-const USER_NAV: NavItem[] = [
+const USER_NAV = [
   { href: "/form", label: "Form Temuan" },
   { href: "/dashboard", label: "Dashboard" },
   { href: "/monthly", label: "Monthly Report" },
-];
-
-const ADMIN_NAV: NavItem[] = [
-  { href: "/admin/dashboard", label: "Dashboard" },
-  { href: "/admin/approval", label: "Approval" },
-];
+] as const;
 
 export function AppHeader({ profile }: { profile: Profile }) {
   const pathname = usePathname();
   const router = useRouter();
-  const isAdmin = profile.role === "admin";
-  const nav = isAdmin ? ADMIN_NAV : USER_NAV;
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -30,7 +22,8 @@ export function AppHeader({ profile }: { profile: Profile }) {
     router.refresh();
   }
 
-  const subtitle = nav.find((n) => pathname.startsWith(n.href))?.label || "SIGAP HSE";
+  const subtitle =
+    USER_NAV.find((n) => pathname.startsWith(n.href))?.label || "SIGAP HSE";
 
   return (
     <header className="app-header">
@@ -39,11 +32,14 @@ export function AppHeader({ profile }: { profile: Profile }) {
         <div>
           <strong>SIGAP HSE</strong>
           <p>{subtitle}</p>
+          {profile.full_name && (
+            <p className="hero-greeting">{getGreeting(profile.full_name)}</p>
+          )}
         </div>
       </div>
 
       <nav className="main-nav">
-        {nav.map((item) => (
+        {USER_NAV.map((item) => (
           <Link
             key={item.href}
             href={item.href}
@@ -60,7 +56,7 @@ export function AppHeader({ profile }: { profile: Profile }) {
           <div className="avatar">{(profile.full_name || "U").slice(0, 2).toUpperCase()}</div>
           <div>
             <strong>{profile.full_name}</strong>
-            <p>{isAdmin ? "Administrator" : "PIC"}</p>
+            <p>PIC</p>
           </div>
         </div>
         <button type="button" className="button button-secondary" onClick={logout}>

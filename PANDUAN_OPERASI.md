@@ -1,82 +1,84 @@
-# Panduan Operasi — SIGAP HSE (Final)
+# Panduan Operasi — SIGAP HSE v1
 
 ## Login
 
-### User / PIC (11 Perusahaan)
-1. Pilih tab **User / PIC**
-2. Pilih nama perusahaan dari dropdown (PT.Dummy 01 – PT.Dummy 11)
+### User / PIC (12 Perusahaan)
+1. Tab **User / PIC**
+2. Pilih perusahaan dari dropdown
 3. Klik **Masuk** — tanpa password
 
-Setiap perusahaan hanya melihat data temuan miliknya sendiri.
+Setiap PIC hanya melihat temuan miliknya (RLS).
 
 ### Admin
-1. Pilih tab **Admin**
-2. Email: `admin@sigap.com` (otomatis terisi)
-3. PIN: `152114`
+1. Tab **Admin**
+2. Email: `admin@sigap.com`
+3. PIN: **6–8 digit angka** (sesuai `SIGAP_ADMIN_PIN` di server)
 4. Klik **Masuk sebagai Admin**
+
+> Cara mengubah PIN: lihat [`PANDUAN_PIN_ADMIN.md`](./PANDUAN_PIN_ADMIN.md)
 
 ---
 
 ## Role & Hak Akses
 
-| Role | Login | Hak Akses |
-|------|-------|-----------|
-| **field_staff** (PIC) | Dropdown PT.Dummy | Input temuan, update tindak lanjut (open→progress), upload monthly report, lihat dashboard sendiri |
-| **admin** | Email + PIN | Lihat semua temuan, approve progress→closed, hapus temuan |
+| Role | Hak Akses |
+|------|-----------|
+| **field_staff** (PIC) | Form before, form after, dashboard sendiri, monthly report |
+| **admin** | Semua temuan, approve/reject, analisis, laporan, master PIC |
+
+PIC **tidak bisa** menghapus temuan.
 
 ---
 
-## Alur User (PIC)
+## Alur PIC
 
-### 1. Form Temuan
-**Langkah 1 — Info Dasar**
-- Nama PT (otomatis, tidak bisa diubah)
-- Tanggal & waktu (klik **Sekarang** untuk isi otomatis)
-- Area & Kategori
+### 1. Form Temuan (Before) — `/form`
+**Slide 1:** PT (fixed), judul, area (teks bebas), tikor (opsional), kategori  
+**Slide 2:** Foto before + deskripsi  
+**Slide 3:** Review → konfirmasi → submit → status **Open**
 
-**Langkah 2 — Foto & Deskripsi**
-- Upload foto temuan (dikompresi otomatis)
-- Isi deskripsi foto/temuan
+### 2. Form After — `/form-after/[id]`
+Diakses dari dashboard (klik temuan **Open** atau **Rejected**).  
+**Slide 1:** Data before (readonly), upload foto after + deskripsi tindak lanjut  
+**Slide 2:** Review → submit → status **On Progress**
 
-**Langkah 3 — Review & Submit**
-- Cek ulang data → **Submit Temuan**
-- Status awal: **Open** (merah)
+### 3. Dashboard — `/dashboard`
+- KPI: Total, Open, On Progress, Closed, Rejected
+- Filter status / area / tanggal
+- Tombol **Segarkan**
 
-### 2. Dashboard
-- Lihat semua temuan perusahaan Anda
-- Klik baris berstatus **Open** → popup "Update Temuan?"
-  - **Tidak** → batal
-  - **Ya** → form update:
-    1. Upload foto **after** + tanggal penyelesaian (tidak boleh sebelum tanggal temuan)
-    2. Review → Submit
-- Setelah submit update: status berubah ke **On Progress** (kuning)
-
-### 3. Monthly Report
-- Pilih bulan laporan
-- Upload file Excel (.xlsx)
-- Riwayat upload tampil di sisi kanan
+### 4. Monthly Report — `/monthly`
+- Input tanggal + tombol **Sekarang**
+- Upload file laporan (semua format)
 
 ---
 
-## Alur Admin
+## Alur Admin — `/admin/dashboard`
 
-### Dashboard
-Melihat semua temuan dari seluruh perusahaan beserta statusnya.
+Panel sidebar dengan 5 area:
 
-### Approval
-- Temuan berstatus **On Progress** muncul di halaman Approval
-- Admin review foto before/after dan detail
-- Klik **Setujui (Closed)** → status berubah **Closed** (hijau)
+| Menu | Fungsi |
+|------|--------|
+| Dashboard | KPI, chart, temuan terbaru |
+| Daftar Temuan | Tabel lengkap + filter + export CSV |
+| Analisis Tren | Visualisasi performa |
+| Laporan | Generator ekspor dokumen |
+| Master PIC | Kelola nama PIC (edit/nonaktifkan) |
+
+**Approval:** Buka detail temuan berstatus **On Progress** → **Setujui (Closed)** atau **Tolak (Rejected)**.
+
+Temuan **Rejected** dapat diperbaiki PIC lewat form after.
 
 ---
 
 ## Status Temuan
 
-| Status | Warna | Arti |
-|--------|-------|------|
-| Open | Merah | Temuan baru, belum ditindaklanjuti |
-| On Progress | Kuning | User sudah upload foto after, menunggu approval admin |
-| Closed | Hijau | Disetujui admin, selesai |
+| Status | Arti |
+|--------|------|
+| **Open** | Menunggu data after |
+| **On Progress** | Menunggu approval admin |
+| **Closed** | Disetujui, selesai |
+| **Rejected** | Ditolak admin, perlu perbaikan |
 
 ---
 
@@ -84,44 +86,31 @@ Melihat semua temuan dari seluruh perusahaan beserta statusnya.
 
 ### 1. Migration database
 Jalankan berurutan di Supabase SQL Editor:
-1. `supabase/migrations/0001_init.sql`
-2. `supabase/migrations/0002_seed.sql`
-3. `supabase/migrations/0003_finalize.sql`
+1. `0001_init.sql` → `0002_seed.sql` → `0003_finalize.sql`
+2. `0005_sigap_v1.sql` → `0006_rejected_resubmit.sql`
 
-### 2. Buat 12 user di Supabase Auth
-Password semua user: `sigap-demo-2024` (centang Auto Confirm)
+### 2. Buat user auth
+Jalankan `supabase/scripts/create_sigap_users.sql` (13 akun sekaligus).
 
-| Email | Role | Nama |
-|-------|------|------|
-| admin@sigap.com | admin | Administrator SIGAP |
-| pt-dummy-01@sigap.com | field_staff | PT.Dummy 01 |
-| pt-dummy-02@sigap.com | field_staff | PT.Dummy 02 |
-| ... | ... | ... |
-| pt-dummy-11@sigap.com | field_staff | PT.Dummy 11 |
+Password default script harus sama dengan `SIGAP_DEMO_PASSWORD`.
 
-### 3. Set role profil
-Jalankan `supabase/migrations/0004_seed_users.sql`
+### 3. Environment aplikasi
+```bash
+copy .env.local.example .env.local
+```
+Isi URL, anon key, password demo, dan PIN admin (6–8 digit).
 
-### 4. Config aplikasi
-Isi `js/config.js` dengan URL dan anon key Supabase.
-
-### 5. Storage buckets
-Pastikan bucket ada:
+### 4. Storage buckets
+Pastikan ada di Supabase Storage:
 - `finding-photos` (public)
 - `monthly-reports` (private)
 
----
-
-## Menjalankan Lokal
-
+### 5. Jalankan lokal
 ```bash
 npm install
-copy .env.local.example .env.local
 npm run dev
 ```
 
-Buka `http://localhost:3000`
-
 ---
 
-*SIGAP HSE — Panduan Operasi Final v2.0*
+*SIGAP HSE — Panduan Operasi v1.0*

@@ -1,29 +1,63 @@
 # SIGAP HSE
 
-Sistem monitoring temuan Health, Safety & Environment — **Next.js 15** + Supabase.
+**Sistem Informasi Guna Audit dan Penyelesaian** — aplikasi pelaporan dan tindak lanjut temuan Health, Safety & Environment.
+
+**Versi rilis production:** v1.0
 
 ## Stack
 
-- **Next.js 15** (App Router)
-- **React 19**
-- **Supabase** (Auth, Postgres, Storage)
-- **TypeScript**
+| Layer | Teknologi |
+|-------|-----------|
+| Frontend | Next.js 15 (App Router), React 19, TypeScript |
+| Backend | Supabase (Auth, Postgres, Storage, RLS) |
+| Deploy | Vercel (recommended) |
 
-## Setup
+## Quick Start
 
 ```bash
-# Install dependencies
 npm install
+copy .env.local.example .env.local   # Windows
+# Isi 4 variabel env (lihat bawah)
 
-# Salin env template
-copy .env.local.example .env.local
-# Isi NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SIGAP_DEMO_PASSWORD
-
-# Jalankan development
 npm run dev
 ```
 
 Buka [http://localhost:3000](http://localhost:3000)
+
+## Environment Variables
+
+Salin `.env.local.example` → `.env.local`:
+
+| Variable | Scope | Keterangan |
+|----------|-------|------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Public | URL project Supabase |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public | Anon key Supabase |
+| `SIGAP_DEMO_PASSWORD` | Server only | Password semua akun demo PIC/admin |
+| `SIGAP_ADMIN_PIN` | Server only | PIN login admin (**6–8 digit angka**) |
+
+> **Jangan** commit `.env.local`. Semua 4 variabel wajib diisi — tidak ada fallback default di production.
+
+Cara ubah PIN admin: [`PANDUAN_PIN_ADMIN.md`](./PANDUAN_PIN_ADMIN.md)
+
+## Database Setup
+
+Jalankan **berurutan** di Supabase SQL Editor:
+
+1. `supabase/migrations/0001_init.sql`
+2. `supabase/migrations/0002_seed.sql`
+3. `supabase/migrations/0003_finalize.sql`
+4. `supabase/migrations/0005_sigap_v1.sql`
+5. `supabase/migrations/0006_rejected_resubmit.sql`
+6. `supabase/scripts/create_sigap_users.sql` — buat 13 user auth sekaligus
+
+Opsional: `0004_seed_users.sql` hanya jika user sudah dibuat manual lewat dashboard.
+
+## Login
+
+| Role | Cara masuk |
+|------|------------|
+| **PIC** | Pilih perusahaan dari dropdown (12 PT) — tanpa password |
+| **Admin** | `admin@sigap.com` + PIN dari `SIGAP_ADMIN_PIN` |
 
 ## Scripts
 
@@ -32,24 +66,36 @@ Buka [http://localhost:3000](http://localhost:3000)
 | `npm run dev` | Development server |
 | `npm run build` | Production build |
 | `npm run start` | Jalankan build produksi |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | TypeScript check |
 
-## Struktur
+## Struktur Proyek
 
 ```
-app/                  → Halaman & routing (App Router)
-components/           → UI components
-lib/                  → Supabase client, queries, utils
-supabase/migrations/  → SQL schema & seed
-legacy/               → Arsip app vanilla JS (v1)
+app/                    Halaman & API routes
+components/             UI PIC + admin
+components/admin/       Panel admin (sidebar workspace)
+lib/                    Supabase, queries, constants
+supabase/migrations/    Schema SQL
+supabase/scripts/       Utilitas SQL (buat user)
 ```
 
-## Login
+## Deploy Vercel
 
-- **User/PIC:** dropdown PT.Dummy 01–11 (tanpa password)
-- **Admin:** `admin@sigap.com` + PIN `152114`
+1. Push repo ke GitHub
+2. Import project di Vercel
+3. Set **4 environment variables** (sama seperti `.env.local`)
+4. Deploy
+
+Error `MIDDLEWARE_INVOCATION_FAILED` = env Supabase belum diisi di Vercel.
 
 ## Dokumentasi
 
-- `PANDUAN_OPERASI.md` — panduan pengguna
-- `PANDUAN_PUSH_GITHUB.md` — panduan deploy ke GitHub
-- `PROJECT.md` — spesifikasi teknis awal
+- [`PANDUAN_OPERASI.md`](./PANDUAN_OPERASI.md) — panduan pengguna PIC & admin
+- [`PANDUAN_PIN_ADMIN.md`](./PANDUAN_PIN_ADMIN.md) — ubah PIN admin
+- [`PANDUAN_PUSH_GITHUB.md`](./PANDUAN_PUSH_GITHUB.md) — push & deploy
+- [`PROJECT.md`](./PROJECT.md) — ringkasan arsitektur
+
+---
+
+*SIGAP HSE v1.0*

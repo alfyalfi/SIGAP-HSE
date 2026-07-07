@@ -4,11 +4,12 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { uploadMonthlyReport } from "@/lib/queries";
-import { formatDateTime } from "@/lib/constants";
+import { formatDateTime, toLocalDateValue } from "@/lib/constants";
 
 type Report = {
   id: string;
   report_month: string;
+  report_date?: string | null;
   file_name: string;
   created_at: string;
 };
@@ -24,19 +25,20 @@ export function MonthlyReportForm({
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState("");
+  const [reportDate, setReportDate] = useState(toLocalDateValue());
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
-    const reportMonth = (form.elements.namedItem("reportMonth") as HTMLInputElement).value;
     const fileInput = form.elements.namedItem("reportFile") as HTMLInputElement;
     const file = fileInput.files?.[0];
-    if (!file || !reportMonth) return;
+    if (!file || !reportDate) return;
 
     setLoading(true);
     try {
-      await uploadMonthlyReport(supabase, file, `${reportMonth}-01`, companyName);
+      await uploadMonthlyReport(supabase, file, reportDate, companyName);
       form.reset();
+      setReportDate(toLocalDateValue());
       router.refresh();
     } catch (err) {
       setToast(err instanceof Error ? err.message : "Gagal upload");
@@ -49,31 +51,55 @@ export function MonthlyReportForm({
     <>
       <div className="page-intro">
         <h2>Monthly Report</h2>
-        <p className="muted">Unggah laporan Excel bulanan perusahaan Anda.</p>
+        <p className="muted">Unggah laporan bulanan perusahaan Anda (semua format file).</p>
       </div>
       <div className="monthly-grid">
         <form className="card" onSubmit={handleSubmit}>
           <label>
-            <span>Bulan Laporan</span>
-            <input type="month" name="reportMonth" required />
+            <span>Tanggal Laporan</span>
+            <div className="input-with-action">
+              <input
+                type="date"
+                name="reportDate"
+                value={reportDate}
+                onChange={(e) => setReportDate(e.target.value)}
+                required
+              />
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={() => setReportDate(toLocalDateValue())}
+              >
+                Sekarang
+              </button>
+            </div>
           </label>
           <label className="upload-card">
-            <span>File Excel (.xlsx)</span>
-            <input type="file" name="reportFile" accept=".xlsx,.xls" required />
+            <span>File Laporan</span>
+            <input type="file" name="reportFile" required />
+            <small>Mendukung Excel, PDF, Word, dan format lainnya.</small>
           </label>
-          <button type="submit" className="button button-primary button-block" disabled={loading}>
+          <button
+            type="submit"
+            className="button button-primary button-block"
+            disabled={loading}
+          >
             {loading ? "Mengunggah..." : "Upload Laporan"}
           </button>
         </form>
         <div className="card">
           <h3 className="section-title">Riwayat Upload</h3>
           <div className="monthly-history">
-            {reports.length ? reports.map((r) => (
-              <div key={r.id} className="history-item">
-                <strong>{r.file_name}</strong>
-                <p className="muted">{r.report_month} · {formatDateTime(r.created_at)}</p>
-              </div>
-            )) : (
+            {reports.length ? (
+              reports.map((r) => (
+                <div key={r.id} className="history-item">
+                  <strong>{r.file_name}</strong>
+                  <p className="muted">
+                    {r.report_date || r.report_month} · {formatDateTime(r.created_at)}
+                  </p>
+                </div>
+              ))
+            ) : (
               <p className="muted">Belum ada laporan diunggah.</p>
             )}
           </div>

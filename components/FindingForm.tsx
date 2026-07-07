@@ -6,59 +6,60 @@ import { Stepper } from "./Stepper";
 import { createClient } from "@/lib/supabase/client";
 import { createFinding, uploadFindingPhoto } from "@/lib/queries";
 import { compressImage } from "@/lib/compress";
-import { formatDateTime, toLocalDatetimeValue } from "@/lib/constants";
-
-type Option = { id: string; name: string };
+import {
+  FINDING_CATEGORIES,
+  formatDateTime,
+  getCategoryLabel,
+  toLocalDatetimeValue,
+} from "@/lib/constants";
 
 const STEPS = ["Info Dasar", "Foto & Deskripsi", "Review"];
 
-export function FindingForm({
-  companyName,
-  areas,
-  categories,
-}: {
-  companyName: string;
-  areas: Option[];
-  categories: Option[];
-}) {
+export function FindingForm({ companyName }: { companyName: string }) {
   const router = useRouter();
   const supabase = createClient();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState("");
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const [foundDatetime, setFoundDatetime] = useState(toLocalDatetimeValue());
-  const [areaId, setAreaId] = useState("");
-  const [categoryId, setCategoryId] = useState("");
+  const [title, setTitle] = useState("");
+  const [areaText, setAreaText] = useState("");
+  const [tikor, setTikor] = useState("");
+  const [categoryText, setCategoryText] = useState("");
   const [photoDescription, setPhotoDescription] = useState("");
   const [beforePhoto, setBeforePhoto] = useState<File | null>(null);
   const [preview, setPreview] = useState("");
 
   function validate(s: number) {
-    if (s === 1 && (!foundDatetime || !areaId || !categoryId)) {
-      setToast("Lengkapi tanggal, area, dan kategori.");
+    if (s === 1 && (!foundDatetime || !title.trim() || !areaText.trim() || !categoryText)) {
+      setToast("Lengkapi judul, area, dan kategori temuan.");
       return false;
     }
     if (s === 2 && (!beforePhoto || !photoDescription.trim())) {
       setToast("Foto dan deskripsi wajib diisi.");
       return false;
     }
+    setToast("");
     return true;
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit() {
     if (!validate(2) || !beforePhoto) return;
     setLoading(true);
     try {
       const finding = await createFinding(supabase, {
         foundDatetime: new Date(foundDatetime).toISOString(),
-        areaId,
-        categoryId,
+        title: title.trim(),
+        areaText: areaText.trim(),
+        categoryText,
+        tikor: tikor.trim() || undefined,
         photoDescription: photoDescription.trim(),
       });
       const compressed = await compressImage(beforePhoto);
       await uploadFindingPhoto(supabase, finding.id, compressed, "before");
+      setShowConfirm(false);
       router.push("/dashboard");
       router.refresh();
     } catch (err) {
@@ -68,24 +69,37 @@ export function FindingForm({
     }
   }
 
-  const areaName = areas.find((a) => a.id === areaId)?.name || "-";
-  const categoryName = categories.find((c) => c.id === categoryId)?.name || "-";
-
   return (
     <>
       <div className="page-intro">
-        <h2>Form Temuan</h2>
-        <p className="muted">Laporkan temuan HSE baru dari lapangan.</p>
+        <h2>Form Temuan (Before)</h2>
+        <p className="muted">Laporkan temuan HSE baru dari lapangan — 3 langkah.</p>
       </div>
 
       <Stepper steps={STEPS} current={step} />
 
-      <form className="card form-card" onSubmit={handleSubmit}>
+      <form
+        className="card form-card"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setShowConfirm(true);
+        }}
+      >
         {step === 1 && (
           <div className="form-grid">
             <label className="full-span">
-              <span>Nama PT</span>
+              <span>Nama PT (PIC)</span>
               <input type="text" value={companyName} readOnly />
+            </label>
+            <label className="full-span">
+              <span>Judul Temuan</span>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Ringkasan singkat temuan"
+                required
+              />
             </label>
             <label>
               <span>Tanggal & Waktu Temuan</span>
@@ -96,23 +110,47 @@ export function FindingForm({
                   onChange={(e) => setFoundDatetime(e.target.value)}
                   required
                 />
-                <button type="button" className="button button-secondary" onClick={() => setFoundDatetime(toLocalDatetimeValue())}>
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  onClick={() => setFoundDatetime(toLocalDatetimeValue())}
+                >
                   Sekarang
                 </button>
               </div>
             </label>
             <label>
-              <span>Area</span>
-              <select value={areaId} onChange={(e) => setAreaId(e.target.value)} required>
-                <option value="">Pilih area</option>
-                {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-              </select>
+              <span>Area / Lokasi</span>
+              <input
+                type="text"
+                value={areaText}
+                onChange={(e) => setAreaText(e.target.value)}
+                placeholder="Contoh: Gudang A, Lantai 2"
+                required
+              />
             </label>
             <label>
+              <span>Tikor (opsional)</span>
+              <input
+                type="text"
+                value={tikor}
+                onChange={(e) => setTikor(e.target.value)}
+                placeholder="Koordinat atau titik lokasi"
+              />
+            </label>
+            <label className="full-span">
               <span>Kategori</span>
-              <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
+              <select
+                value={categoryText}
+                onChange={(e) => setCategoryText(e.target.value)}
+                required
+              >
                 <option value="">Pilih kategori</option>
-                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {FINDING_CATEGORIES.map((c) => (
+                  <option key={c.value} value={c.value}>
+                    {c.label}
+                  </option>
+                ))}
               </select>
             </label>
           </div>
@@ -121,7 +159,7 @@ export function FindingForm({
         {step === 2 && (
           <>
             <label className="upload-card">
-              <span>Foto Temuan</span>
+              <span>Foto Temuan (Before)</span>
               <input
                 type="file"
                 accept="image/*"
@@ -161,9 +199,11 @@ export function FindingForm({
           <div className="review-panel">
             {[
               ["Nama PT", companyName],
+              ["Judul", title],
               ["Tanggal & Waktu", formatDateTime(foundDatetime)],
-              ["Area", areaName],
-              ["Kategori", categoryName],
+              ["Area", areaText],
+              ["Tikor", tikor || "-"],
+              ["Kategori", getCategoryLabel(categoryText)],
               ["Deskripsi", photoDescription],
               ["Foto", beforePhoto?.name || "-"],
             ].map(([k, v]) => (
@@ -177,7 +217,11 @@ export function FindingForm({
 
         <div className="step-actions">
           {step > 1 && (
-            <button type="button" className="button button-secondary" onClick={() => setStep(step - 1)}>
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={() => setStep(step - 1)}
+            >
               Kembali
             </button>
           )}
@@ -185,7 +229,9 @@ export function FindingForm({
             <button
               type="button"
               className="button button-primary"
-              onClick={() => { if (validate(step)) setStep(step + 1); }}
+              onClick={() => {
+                if (validate(step)) setStep(step + 1);
+              }}
             >
               Lanjut
             </button>
@@ -196,6 +242,35 @@ export function FindingForm({
           )}
         </div>
       </form>
+
+      {showConfirm && (
+        <div className="modal" role="dialog">
+          <div className="modal-backdrop" onClick={() => setShowConfirm(false)} />
+          <div className="modal-card card">
+            <h3 className="section-title">Kirim Temuan?</h3>
+            <p className="muted">
+              Pastikan data sudah benar. Temuan akan tersimpan dengan status <strong>Open</strong>.
+            </p>
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={() => setShowConfirm(false)}
+              >
+                Periksa Lagi
+              </button>
+              <button
+                type="button"
+                className="button button-primary"
+                disabled={loading}
+                onClick={handleSubmit}
+              >
+                {loading ? "Menyimpan..." : "Ya, Kirim"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {toast && <div className="toast toast-error">{toast}</div>}
     </>

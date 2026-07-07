@@ -4,10 +4,13 @@ node_modules/
 out/
 
 # Kredensial — JANGAN di-commit
-js/config.js
 .env
 .env.local
 .env.*.local
+
+# Build artifacts
+*.tsbuildinfo
+tsconfig.tsbuildinfo
 
 # OS & editor
 .DS_Store
@@ -16,8 +19,9 @@ desktop.ini
 *.log
 .cursor/
 
-# Legacy static app (arsip)
+# Legacy (jika ada)
 legacy/
+js/config.js
 
-# TypeScript
+# TypeScript (auto-generated oleh Next.js)
 next-env.d.ts

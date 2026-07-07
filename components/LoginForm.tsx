@@ -1,16 +1,29 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { COMPANIES } from "@/lib/constants";
+import { ADMIN_PIN_MAX, ADMIN_PIN_MIN, isValidAdminPin } from "@/lib/pin";
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [tab, setTab] = useState<"user" | "admin">("user");
   const [companyId, setCompanyId] = useState("");
   const [pin, setPin] = useState("");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const error = searchParams.get("error");
+    if (error === "config") {
+      setStatus("Environment Supabase belum dikonfigurasi. Isi NEXT_PUBLIC_SUPABASE_URL dan NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+    } else if (error === "session") {
+      setStatus("Sesi gagal dimuat. Silakan login kembali.");
+    } else if (error === "secrets") {
+      setStatus("Server secrets belum dikonfigurasi. Isi SIGAP_DEMO_PASSWORD dan SIGAP_ADMIN_PIN.");
+    }
+  }, [searchParams]);
 
   async function handleUserLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -36,6 +49,10 @@ export function LoginForm() {
 
   async function handleAdminLogin(e: React.FormEvent) {
     e.preventDefault();
+    if (!isValidAdminPin(pin)) {
+      setStatus(`PIN harus ${ADMIN_PIN_MIN}–${ADMIN_PIN_MAX} digit angka.`);
+      return;
+    }
     setLoading(true);
     setStatus("Memverifikasi PIN...");
     try {
@@ -108,12 +125,15 @@ export function LoginForm() {
                 <input
                   type="password"
                   inputMode="numeric"
-                  maxLength={6}
-                  placeholder="6 digit PIN"
+                  minLength={ADMIN_PIN_MIN}
+                  maxLength={ADMIN_PIN_MAX}
+                  pattern="[0-9]{6,8}"
+                  placeholder={`${ADMIN_PIN_MIN}–${ADMIN_PIN_MAX} digit PIN`}
                   value={pin}
-                  onChange={(e) => setPin(e.target.value)}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, ADMIN_PIN_MAX))}
                   required
                 />
+                <small className="helper-text">Masukkan PIN admin ({ADMIN_PIN_MIN}–{ADMIN_PIN_MAX} digit angka).</small>
               </label>
               <button type="submit" className="button button-primary button-block" disabled={loading}>
                 Masuk sebagai Admin

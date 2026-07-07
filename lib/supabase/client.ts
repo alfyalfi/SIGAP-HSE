@@ -1,8 +1,10 @@
 import { createBrowserClient } from "@supabase/ssr";
+import { getSupabaseEnv } from "@/lib/env";
 
 export function createClient() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const env = getSupabaseEnv();
+  if (!env) {
+    throw new Error("Supabase belum dikonfigurasi. Isi environment variables.");
+  }
+  return createBrowserClient(env.url, env.anonKey);
 }
