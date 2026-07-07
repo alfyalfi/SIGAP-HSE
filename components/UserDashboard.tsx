@@ -8,34 +8,14 @@ import { formatDateTime } from "@/lib/constants";
 
 function KpiRow({ findings }: { findings: Finding[] }) {
   const cards = [
-    { label: "Total", value: findings.length, cls: "", clickable: false },
-    {
-      label: "Open",
-      value: findings.filter((f) => f.status === "open").length,
-      cls: "open",
-      clickable: false,
-    },
-    {
-      label: "On Progress",
-      value: findings.filter((f) => f.status === "progress").length,
-      cls: "progress",
-      clickable: false,
-    },
-    {
-      label: "Closed",
-      value: findings.filter((f) => f.status === "closed").length,
-      cls: "closed",
-      clickable: false,
-    },
-    {
-      label: "Rejected",
-      value: findings.filter((f) => f.status === "rejected").length,
-      cls: "rejected",
-      clickable: false,
-    },
+    { label: "Total", value: findings.length, cls: "" },
+    { label: "Open", value: findings.filter((f) => f.status === "open").length, cls: "open" },
+    { label: "Progress", value: findings.filter((f) => f.status === "progress").length, cls: "progress" },
+    { label: "Closed", value: findings.filter((f) => f.status === "closed").length, cls: "closed" },
+    { label: "Rejected", value: findings.filter((f) => f.status === "rejected").length, cls: "rejected" },
   ];
   return (
-    <div className="kpi-row">
+    <div className="kpi-row kpi-row-scroll">
       {cards.map((c) => (
         <div key={c.label} className={`kpi-card kpi-${c.cls}`}>
           <p>{c.label}</p>
@@ -52,6 +32,7 @@ export function UserDashboard({ findings }: { findings: Finding[] }) {
   const [areaFilter, setAreaFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
 
   const areas = useMemo(
     () => [...new Set(findings.map((f) => f.areaName).filter((a) => a && a !== "-"))].sort(),
@@ -77,13 +58,17 @@ export function UserDashboard({ findings }: { findings: Finding[] }) {
     return f.status === "open" || f.status === "rejected";
   }
 
+  function openFinding(f: Finding) {
+    if (canUpdate(f)) router.push(`/form-after/${f.id}`);
+  }
+
   return (
     <>
       <div className="page-intro dashboard-intro">
         <div>
           <h2>Dashboard Temuan</h2>
           <p className="muted">
-            Klik baris <strong>open</strong> atau <strong>rejected</strong> untuk mengisi data after.
+            Ketuk temuan <strong>open</strong> / <strong>rejected</strong> untuk isi data after.
           </p>
         </div>
         <button
@@ -99,8 +84,8 @@ export function UserDashboard({ findings }: { findings: Finding[] }) {
       <KpiRow findings={findings} />
 
       <div className="card filter-card">
-        <div className="filter-row">
-          <label>
+        <div className="filter-row filter-row-primary">
+          <label className="filter-grow">
             <span>Status</span>
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option value="">Semua</option>
@@ -110,29 +95,58 @@ export function UserDashboard({ findings }: { findings: Finding[] }) {
               <option value="rejected">Rejected</option>
             </select>
           </label>
-          <label>
-            <span>Area</span>
-            <select value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)}>
-              <option value="">Semua area</option>
-              {areas.map((a) => (
-                <option key={a} value={a}>
-                  {a}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>Dari Tanggal</span>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-            />
-          </label>
+          <button
+            type="button"
+            className="button button-secondary filter-toggle"
+            onClick={() => setShowFilters((v) => !v)}
+          >
+            {showFilters ? "Tutup" : "Filter"}
+          </button>
         </div>
+        {showFilters && (
+          <div className="filter-row filter-row-extra">
+            <label>
+              <span>Area</span>
+              <select value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)}>
+                <option value="">Semua area</option>
+                {areas.map((a) => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Dari Tanggal</span>
+              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+            </label>
+          </div>
+        )}
       </div>
 
-      <div className="card table-card">
+      <div className="finding-cards mobile-only">
+        {filtered.length ? (
+          filtered.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              className={`finding-card${canUpdate(f) ? " actionable" : ""}`}
+              onClick={() => openFinding(f)}
+              disabled={!canUpdate(f)}
+            >
+              <div className="finding-card-top">
+                <span className="mono">{f.code}</span>
+                <StatusBadge status={f.status} />
+              </div>
+              <div className="finding-card-title">{f.title}</div>
+              <div className="finding-card-meta">{formatDateTime(f.foundDatetime || f.foundAt)}</div>
+              <div className="finding-card-meta">{f.areaName} · {f.categoryName}</div>
+            </button>
+          ))
+        ) : (
+          <p className="muted card" style={{ padding: 20 }}>Belum ada temuan.</p>
+        )}
+      </div>
+
+      <div className="card table-card desktop-only">
         <div className="table-wrap">
           <table>
             <thead>
@@ -151,25 +165,19 @@ export function UserDashboard({ findings }: { findings: Finding[] }) {
                   <tr
                     key={f.id}
                     className={canUpdate(f) ? "row-clickable" : ""}
-                    onClick={() => {
-                      if (canUpdate(f)) router.push(`/form-after/${f.id}`);
-                    }}
+                    onClick={() => openFinding(f)}
                   >
                     <td className="mono">{f.code}</td>
                     <td>{f.title}</td>
                     <td>{formatDateTime(f.foundDatetime || f.foundAt)}</td>
                     <td>{f.areaName}</td>
                     <td>{f.categoryName}</td>
-                    <td>
-                      <StatusBadge status={f.status} />
-                    </td>
+                    <td><StatusBadge status={f.status} /></td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="muted">
-                    Belum ada temuan.
-                  </td>
+                  <td colSpan={6} className="muted">Belum ada temuan.</td>
                 </tr>
               )}
             </tbody>

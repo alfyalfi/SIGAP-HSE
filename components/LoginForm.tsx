@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { COMPANIES } from "@/lib/constants";
+import { COMPANIES, SIGAP_FULL_NAME } from "@/lib/constants";
 import { ADMIN_PIN_MAX, ADMIN_PIN_MIN, isValidAdminPin } from "@/lib/pin";
+import { AppCopyright } from "./AppCopyright";
+import { SigapLogo } from "./SigapLogo";
 
 export function LoginForm() {
   const router = useRouter();
@@ -50,7 +52,7 @@ export function LoginForm() {
   async function handleAdminLogin(e: React.FormEvent) {
     e.preventDefault();
     if (!isValidAdminPin(pin)) {
-      setStatus(`PIN harus ${ADMIN_PIN_MIN}–${ADMIN_PIN_MAX} digit angka.`);
+      setStatus(`PIN harus ${ADMIN_PIN_MIN}-${ADMIN_PIN_MAX} digit angka.`);
       return;
     }
     setLoading(true);
@@ -75,12 +77,29 @@ export function LoginForm() {
   return (
     <section className="auth-screen active">
       <div className="auth-wrap">
-        <div className="auth-hero">
-          <span className="eyebrow">SIGAP HSE</span>
-          <h1>Sistem Pelaporan & Tindak Lanjut Temuan HSE</h1>
-          <p>Input temuan lapangan, pantau progres perbaikan, dan kelola approval secara terpusat.</p>
+        <div className="auth-hero auth-hero-desktop">
+          <SigapLogo size="xl" priority className="auth-hero-logo" />
+          <h1 className="sigap-hero-title">SIGAP</h1>
+          <p className="sigap-hero-subtitle">{SIGAP_FULL_NAME}</p>
+          <p className="auth-hero-desc">
+            Pelaporan temuan HSE, tindak lanjut lapangan, dan approval terpusat untuk seluruh
+            perusahaan.
+          </p>
         </div>
+
         <div className="auth-card card">
+          <div className="auth-hero-mobile">
+            <SigapLogo size="xl" priority className="auth-hero-logo" />
+            <div className="auth-mobile-copy">
+              <h1 className="sigap-hero-title">SIGAP</h1>
+              <p className="sigap-hero-subtitle">{SIGAP_FULL_NAME}</p>
+            </div>
+            <p className="auth-hero-desc">
+              Pelaporan temuan HSE, tindak lanjut lapangan, dan approval terpusat untuk seluruh
+              perusahaan.
+            </p>
+          </div>
+
           <div className="login-tabs">
             <button
               type="button"
@@ -103,16 +122,18 @@ export function LoginForm() {
               <label>
                 <span>Pilih Perusahaan (PIC)</span>
                 <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} required>
-                  <option value="">— Pilih Perusahaan —</option>
+                  <option value="">- Pilih Perusahaan -</option>
                   {COMPANIES.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
                   ))}
                 </select>
               </label>
               <button type="submit" className="button button-primary button-block" disabled={loading}>
                 Masuk
               </button>
-              <p className="helper-text">Pilih nama PT Anda — tanpa password.</p>
+              <p className="helper-text">Pilih nama PT Anda - tanpa password.</p>
             </form>
           ) : (
             <form className="auth-form login-panel active" onSubmit={handleAdminLogin}>
@@ -128,12 +149,14 @@ export function LoginForm() {
                   minLength={ADMIN_PIN_MIN}
                   maxLength={ADMIN_PIN_MAX}
                   pattern="[0-9]{6,8}"
-                  placeholder={`${ADMIN_PIN_MIN}–${ADMIN_PIN_MAX} digit PIN`}
+                  placeholder={`${ADMIN_PIN_MIN}-${ADMIN_PIN_MAX} digit PIN`}
                   value={pin}
                   onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, ADMIN_PIN_MAX))}
                   required
                 />
-                <small className="helper-text">Masukkan PIN admin ({ADMIN_PIN_MIN}–{ADMIN_PIN_MAX} digit angka).</small>
+                <small className="helper-text">
+                  Masukkan PIN admin ({ADMIN_PIN_MIN}-{ADMIN_PIN_MAX} digit angka).
+                </small>
               </label>
               <button type="submit" className="button button-primary button-block" disabled={loading}>
                 Masuk sebagai Admin
@@ -144,6 +167,7 @@ export function LoginForm() {
           {status && <p className="helper-text" style={{ color: "var(--accent-red)" }}>{status}</p>}
         </div>
       </div>
+      <AppCopyright centered />
     </section>
   );
 }

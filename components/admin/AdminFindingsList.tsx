@@ -185,7 +185,33 @@ export function AdminFindingsList({
       </div>
 
       <div className="admin-table-panel">
-        <table>
+        <div className="admin-finding-cards">
+          {pageRows.length ? (
+            pageRows.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                className="admin-finding-card"
+                onClick={() => onViewFinding?.(f)}
+                title="Buka detail temuan untuk review atau hapus data"
+              >
+                <div className="admin-finding-card-top">
+                  <span className="mono admin-id-cell">{f.code}</span>
+                  <AdminStatusBadge status={f.status} />
+                </div>
+                <div className="admin-finding-card-title">{f.title || f.photoDescription || "—"}</div>
+                <div className="admin-finding-card-meta">
+                  {formatDateTime(f.foundDatetime || f.foundAt)} · {f.areaName}
+                </div>
+                <div className="admin-finding-card-meta">{profileName(profiles, f.createdBy)}</div>
+                <div className="admin-finding-card-meta">Ketuk untuk detail lengkap.</div>
+              </button>
+            ))
+          ) : (
+            <div className="admin-empty">Tidak ada temuan yang sesuai filter.</div>
+          )}
+        </div>
+        <table className="admin-desktop-table">
           <thead>
             <tr>
               <th>ID</th>

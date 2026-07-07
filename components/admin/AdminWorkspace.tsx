@@ -37,13 +37,18 @@ export function AdminWorkspace({
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [toast, setToast] = useState("");
+  const [syncing, setSyncing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState(() => new Date());
 
   useEffect(() => {
     setFindings(initialFindings);
     setProfiles(initialProfiles);
+    setLastSyncedAt(new Date());
+    setSyncing(false);
   }, [initialFindings, initialProfiles]);
 
   const refresh = useCallback(() => {
+    setSyncing(true);
     router.refresh();
   }, [router]);
 
@@ -76,6 +81,19 @@ export function AdminWorkspace({
     }
   }
 
+  async function handleDelete(findingId: string, pin: string) {
+    const res = await fetch("/api/admin/delete-finding", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ findingId, pin }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Gagal menghapus temuan");
+    setFindings((prev) => prev.filter((f) => f.id !== findingId));
+    setSelectedFinding(null);
+    router.refresh();
+  }
+
   async function handlePicEdit(id: string, payload: { full_name: string }) {
     const updated = await updateProfile(supabase, id, payload);
     setProfiles((prev) => prev.map((p) => (p.id === id ? { ...p, ...updated } : p)));
@@ -101,6 +119,8 @@ export function AdminWorkspace({
         onNavigate={setView}
         onRefresh={refresh}
         findingsCount={findings.length}
+        lastSyncedAt={lastSyncedAt}
+        syncing={syncing}
         topbarExtra={
           <button
             type="button"
@@ -152,6 +172,7 @@ export function AdminWorkspace({
         onClose={() => setDetailOpen(false)}
         onApprove={handleApprove}
         onReject={handleReject}
+        onDelete={handleDelete}
       />
 
       {toast && (

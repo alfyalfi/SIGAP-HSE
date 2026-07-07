@@ -3,7 +3,9 @@
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { AppHeader } from "./AppHeader";
+import { AppCopyright } from "./AppCopyright";
 import { ClientProviders } from "./ClientProviders";
+import { PicMobileNav } from "./PicMobileNav";
 import type { Profile } from "@/lib/queries";
 
 export function AppShell({
@@ -23,7 +25,11 @@ export function AppShell({
   return (
     <ClientProviders>
       <AppHeader profile={profile} />
-      <main className="app-main">{children}</main>
+      <main className="app-main pic-main">{children}</main>
+      <PicMobileNav />
+      <footer className="app-footer">
+        <AppCopyright centered />
+      </footer>
     </ClientProviders>
   );
 }

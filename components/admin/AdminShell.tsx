@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { SIGAP_FULL_NAME } from "@/lib/constants";
+import { SIGAP_COPYRIGHT, SIGAP_FULL_NAME, formatDateTime } from "@/lib/constants";
+import { SigapLogo } from "@/components/SigapLogo";
 
 export type AdminView = "dashboard" | "temuan" | "analisis" | "laporan" | "pic";
 
@@ -10,6 +11,8 @@ type AdminShellProps = {
   onNavigate: (view: AdminView) => void;
   onRefresh?: () => void;
   findingsCount?: number;
+  lastSyncedAt?: Date;
+  syncing?: boolean;
   pageTitle?: string;
   pageSubtitle?: string;
   topbarExtra?: ReactNode;
@@ -80,7 +83,7 @@ const VIEW_ICONS: Record<AdminView, () => React.ReactElement> = {
 const DEFAULT_TITLES: Record<AdminView, { title: string; sub: string }> = {
   dashboard: {
     title: "Dashboard Utama",
-    sub: "Ringkasan temuan HSE — diperbarui otomatis setiap laporan baru masuk",
+    sub: "Ringkasan temuan HSE - diperbarui otomatis setiap laporan baru masuk",
   },
   temuan: {
     title: "Daftar Temuan",
@@ -105,6 +108,8 @@ export function AdminShell({
   onNavigate,
   onRefresh,
   findingsCount = 0,
+  lastSyncedAt,
+  syncing = false,
   pageTitle,
   pageSubtitle,
   topbarExtra,
@@ -133,7 +138,13 @@ export function AdminShell({
         minute: "2-digit",
         second: "2-digit",
       })
-    : "—";
+    : "-";
+
+  const syncLabel = syncing
+    ? "Sinkronisasi sedang berjalan"
+    : lastSyncedAt
+      ? `Live up to date - last sync ${formatDateTime(lastSyncedAt.toISOString())}`
+      : "Status sistem siap - menunggu sinkronisasi pertama";
 
   function navigate(view: AdminView) {
     onNavigate(view);
@@ -152,9 +163,7 @@ export function AdminShell({
       >
         <Icon />
         {label}
-        {showCount && (
-          <span className="admin-nav-count">{findingsCount}</span>
-        )}
+        {showCount && <span className="admin-nav-count">{findingsCount}</span>}
       </button>
     );
   }
@@ -170,18 +179,16 @@ export function AdminShell({
         />
         <aside className={`admin-sidebar${sidebarOpen ? " open" : ""}`}>
           <div className="admin-brand">
-            <div className="admin-brand-mark">S</div>
+            <SigapLogo size="md" className="admin-brand-logo" />
             <div>
-              <div className="admin-brand-name">SIGAP HSE</div>
+              <div className="admin-brand-name">SIGAP</div>
               <div className="admin-brand-sub">{SIGAP_FULL_NAME}</div>
             </div>
           </div>
 
           <nav className="admin-nav">
             <div className="admin-nav-label">Menu Utama</div>
-            {NAV_MAIN.map((item) =>
-              renderNavItem(item.id, item.label, item.showCount)
-            )}
+            {NAV_MAIN.map((item) => renderNavItem(item.id, item.label, item.showCount))}
           </nav>
 
           <nav className="admin-nav">
@@ -190,8 +197,14 @@ export function AdminShell({
           </nav>
 
           <div className="admin-sidebar-foot">
-            <strong>Live:</strong> Data temuan diperbarui real-time. Gunakan tombol
-            segarkan untuk memuat ulang dari server.
+            <div className="admin-system-status">
+              <span className={`admin-sync-dot${syncing ? " syncing" : " ok"}`} aria-hidden />
+              <div>
+                <strong>{syncLabel}</strong>
+                <p>Last sync: {lastSyncedAt ? formatDateTime(lastSyncedAt.toISOString()) : "-"}</p>
+              </div>
+            </div>
+            <p className="app-copyright admin-copyright">{SIGAP_COPYRIGHT}</p>
           </div>
         </aside>
 

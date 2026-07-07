@@ -312,6 +312,27 @@ export async function rejectFinding(client: SupabaseClient, findingId: string) {
   return data;
 }
 
+export async function deleteFinding(client: SupabaseClient, findingId: string) {
+  const profile = await getCurrentProfile(client);
+  if (profile.role !== "admin") throw new Error("Hanya admin yang dapat menghapus temuan.");
+
+  const photos = await getFindingPhotos(client, findingId);
+  const paths = photos.map((p) => p.storagePath).filter(Boolean);
+  if (paths.length) {
+    await client.storage.from(PHOTO_BUCKET).remove(paths);
+  }
+
+  const { data, error } = await client
+    .from("findings")
+    .delete()
+    .eq("id", findingId)
+    .select("id, code")
+    .single();
+  if (error) throw error;
+
+  return data;
+}
+
 export async function uploadFindingPhoto(
   client: SupabaseClient,
   findingId: string,

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { SigapLogo } from "./SigapLogo";
 import { ThemeToggle } from "./ThemeToggle";
 import { getGreeting } from "@/lib/constants";
 import type { Profile } from "@/lib/queries";
@@ -28,7 +29,9 @@ export function AppHeader({ profile }: { profile: Profile }) {
   return (
     <header className="app-header">
       <div className="header-brand">
-        <div className="brand-mark">S</div>
+        <Link href="/form" className="header-brand-link" aria-label="SIGAP HSE">
+          <SigapLogo size="sm" />
+        </Link>
         <div>
           <strong>SIGAP HSE</strong>
           <p>{subtitle}</p>

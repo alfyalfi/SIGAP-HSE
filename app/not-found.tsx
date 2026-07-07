@@ -1,3 +1,5 @@
+import { AppCopyright } from "@/components/AppCopyright";
+import { SigapLogo } from "@/components/SigapLogo";
 import Link from "next/link";
 
 export default function NotFound() {
@@ -5,6 +7,9 @@ export default function NotFound() {
     <div className="auth-screen active">
       <div className="auth-wrap" style={{ gridTemplateColumns: "1fr", maxWidth: 480 }}>
         <div className="auth-card card">
+          <div style={{ textAlign: "center", marginBottom: 16 }}>
+            <SigapLogo size="lg" />
+          </div>
           <span className="eyebrow">404</span>
           <h1 style={{ marginTop: 8, marginBottom: 8 }}>Halaman Tidak Ditemukan</h1>
           <p className="muted" style={{ marginBottom: 20 }}>
@@ -13,6 +18,7 @@ export default function NotFound() {
           <Link href="/" className="button button-primary">
             Kembali ke Beranda
           </Link>
+          <AppCopyright centered />
         </div>
       </div>
     </div>

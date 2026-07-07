@@ -16,6 +16,10 @@ export const metadata: Metadata = {
     "Sistem Informasi Guna Audit dan Penyelesaian — pelaporan dan tindak lanjut temuan HSE.",
   applicationName: "SIGAP HSE",
   robots: { index: false, follow: false },
+  icons: {
+    icon: [{ url: "/logo.png", type: "image/png" }],
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
