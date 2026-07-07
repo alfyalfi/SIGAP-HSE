@@ -47,14 +47,15 @@
 body {
   background: var(--bg);
   color: var(--text-primary);
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-inter), 'Inter', sans-serif;
   font-size: 14px;
   line-height: 1.5;
   min-height: 100vh;
 }
 
-h1, h2, h3, .section-title { font-family: 'Plus Jakarta Sans', sans-serif; }
-.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+h1, h2, h3, .section-title { font-family: var(--font-jakarta), 'Plus Jakarta Sans', sans-serif; }
+.mono { font-family: var(--font-mono), 'JetBrains Mono', monospace; font-size: 12px; }
+a.nav-link { text-decoration: none; display: inline-flex; align-items: center; }
 
 button, input, select, textarea { font: inherit; color: inherit; }
 button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {

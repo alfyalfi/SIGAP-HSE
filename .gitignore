@@ -1,3 +1,8 @@
+# Dependencies
+node_modules/
+.next/
+out/
+
 # Kredensial — JANGAN di-commit
 js/config.js
 .env
@@ -9,6 +14,10 @@ js/config.js
 Thumbs.db
 desktop.ini
 *.log
-
-# Cursor / IDE (opsional)
 .cursor/
+
+# Legacy static app (arsip)
+legacy/
+
+# TypeScript
+next-env.d.ts

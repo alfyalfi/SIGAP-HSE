@@ -115,10 +115,12 @@ Pastikan bucket ada:
 ## Menjalankan Lokal
 
 ```bash
-py -m http.server 8000
+npm install
+copy .env.local.example .env.local
+npm run dev
 ```
 
-Buka `http://localhost:8000`
+Buka `http://localhost:3000`
 
 ---
 
