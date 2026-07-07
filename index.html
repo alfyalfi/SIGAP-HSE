@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIGAP HSE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- LOGIN -->
+<section id="auth-screen" class="auth-screen active">
+  <div class="auth-wrap">
+    <div class="auth-hero">
+      <span class="eyebrow">SIGAP HSE</span>
+      <h1>Sistem Informasi Guna Audit dan Pengawasan</h1>
+      <p>Input temuan lapangan, pantau progres perbaikan, dan kelola approval secara terpusat.</p>
+    </div>
+    <div class="auth-card card">
+      <div class="login-tabs">
+        <button type="button" class="login-tab active" data-tab="user">User / PIC</button>
+        <button type="button" class="login-tab" data-tab="admin">Admin</button>
+      </div>
+
+      <form id="user-login-form" class="auth-form login-panel active">
+        <label>
+          <span>Pilih Perusahaan (PIC)</span>
+          <select id="company-select" required></select>
+        </label>
+        <button type="submit" class="button button-primary button-block">Masuk</button>
+        <p class="helper-text">Pilih nama PT Anda dari daftar untuk masuk.</p>
+      </form>
+
+      <form id="admin-login-form" class="auth-form login-panel">
+        <label>
+          <span>Email Admin</span>
+          <input type="email" name="email" value="admin@sigap.com" readonly>
+        </label>
+        <label>
+          <span>PIN</span>
+          <input type="password" name="pin" inputmode="numeric" maxlength="6" placeholder="6 digit PIN" required>
+        </label>
+        <button type="submit" class="button button-primary button-block">Masuk sebagai Admin</button>
+      </form>
+
+      <p id="login-status" class="helper-text"></p>
+    </div>
+  </div>
+</section>
+
+<!-- APP -->
+<div id="app-shell" class="app-hidden">
+  <header class="app-header">
+    <div class="header-brand">
+      <div class="brand-mark">S</div>
+      <div>
+        <strong>SIGAP HSE</strong>
+        <p id="header-subtitle">Form Temuan</p>
+      </div>
+    </div>
+
+    <nav id="user-nav" class="main-nav">
+      <button type="button" class="nav-link active" data-view="form">Form Temuan</button>
+      <button type="button" class="nav-link" data-view="dashboard">Dashboard</button>
+      <button type="button" class="nav-link" data-view="monthly">Monthly Report</button>
+    </nav>
+
+    <nav id="admin-nav" class="main-nav hidden">
+      <button type="button" class="nav-link active" data-view="admin-dashboard">Dashboard</button>
+      <button type="button" class="nav-link" data-view="admin-approval">Approval</button>
+    </nav>
+
+    <div class="header-actions">
+      <button class="theme-toggle" id="theme-toggle" aria-label="Toggle tema">◐</button>
+      <div class="user-pill">
+        <div class="avatar" id="user-avatar">U</div>
+        <div>
+          <strong id="user-name">User</strong>
+          <p id="user-role">PIC</p>
+        </div>
+      </div>
+      <button class="button button-secondary" id="logout-button" type="button">Logout</button>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <!-- USER: FORM TEMUAN -->
+    <section id="view-form" class="view active">
+      <div class="page-intro">
+        <h2>Form Temuan</h2>
+        <p class="muted">Laporkan temuan HSE baru dari lapangan.</p>
+      </div>
+
+      <div class="stepper" id="form-stepper">
+        <div class="step-item active" data-step="1"><span>1</span> Info Dasar</div>
+        <div class="step-item" data-step="2"><span>2</span> Foto & Deskripsi</div>
+        <div class="step-item" data-step="3"><span>3</span> Review</div>
+      </div>
+
+      <form id="finding-form" class="card form-card">
+        <div class="form-step active" data-step="1">
+          <div class="form-grid">
+            <label class="full-span">
+              <span>Nama PT</span>
+              <input type="text" id="field-company" readonly>
+            </label>
+            <label>
+              <span>Tanggal & Waktu Temuan</span>
+              <div class="input-with-action">
+                <input type="datetime-local" name="foundDatetime" id="found-datetime" required>
+                <button type="button" class="button button-secondary btn-now" data-target="found-datetime">Sekarang</button>
+              </div>
+            </label>
+            <label>
+              <span>Area</span>
+              <select name="areaId" id="input-area" required></select>
+            </label>
+            <label>
+              <span>Kategori</span>
+              <select name="categoryId" id="input-category" required></select>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-step" data-step="2">
+          <label class="upload-card">
+            <span>Foto Temuan</span>
+            <input type="file" name="beforePhoto" id="before-photo" accept="image/*" capture="environment" required>
+            <small>Foto dikompresi otomatis sebelum upload.</small>
+          </label>
+          <div id="before-preview" class="photo-preview"></div>
+          <label class="full-span">
+            <span>Deskripsi Foto / Temuan</span>
+            <textarea name="photoDescription" rows="4" placeholder="Jelaskan kondisi temuan..." required></textarea>
+          </label>
+        </div>
+
+        <div class="form-step" data-step="3">
+          <div class="review-panel" id="review-panel"></div>
+        </div>
+
+        <div class="step-actions">
+          <button type="button" class="button button-secondary" id="form-prev">Kembali</button>
+          <button type="button" class="button button-primary" id="form-next">Lanjut</button>
+          <button type="submit" class="button button-primary hidden" id="form-submit">Submit Temuan</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- USER: DASHBOARD -->
+    <section id="view-dashboard" class="view">
+      <div class="page-intro">
+        <h2>Dashboard Temuan</h2>
+        <p class="muted">Pantau status temuan. Klik baris <strong>open</strong> untuk update tindak lanjut.</p>
+      </div>
+      <div class="kpi-row" id="user-kpis"></div>
+      <div class="card table-card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Kode</th>
+                <th>Tanggal</th>
+                <th>Area</th>
+                <th>Kategori</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="user-findings-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- USER: MONTHLY REPORT -->
+    <section id="view-monthly" class="view">
+      <div class="page-intro">
+        <h2>Monthly Report</h2>
+        <p class="muted">Unggah laporan Excel bulanan perusahaan Anda.</p>
+      </div>
+      <div class="monthly-grid">
+        <form id="monthly-form" class="card">
+          <label>
+            <span>Bulan Laporan</span>
+            <input type="month" name="reportMonth" id="report-month" required>
+          </label>
+          <label class="upload-card">
+            <span>File Excel (.xlsx)</span>
+            <input type="file" name="reportFile" id="report-file" accept=".xlsx,.xls" required>
+          </label>
+          <button type="submit" class="button button-primary button-block">Upload Laporan</button>
+        </form>
+        <div class="card">
+          <h3 class="section-title">Riwayat Upload</h3>
+          <div id="monthly-history" class="monthly-history"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ADMIN: DASHBOARD -->
+    <section id="view-admin-dashboard" class="view">
+      <div class="page-intro">
+        <h2>Dashboard Admin</h2>
+        <p class="muted">Semua temuan dari seluruh perusahaan.</p>
+      </div>
+      <div class="kpi-row" id="admin-kpis"></div>
+      <div class="card table-card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Kode</th>
+                <th>Perusahaan</th>
+                <th>Tanggal</th>
+                <th>Area</th>
+                <th>Kategori</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="admin-findings-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ADMIN: APPROVAL -->
+    <section id="view-admin-approval" class="view">
+      <div class="page-intro">
+        <h2>Approval Temuan</h2>
+        <p class="muted">Setujui temuan yang sudah dalam status <strong>progress</strong> untuk ditutup (closed).</p>
+      </div>
+      <div id="approval-list" class="approval-list"></div>
+    </section>
+  </main>
+</div>
+
+<!-- MODAL: Konfirmasi update -->
+<div id="confirm-modal" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modal-backdrop"></div>
+  <div class="modal-card card">
+    <h3 class="section-title">Update Temuan?</h3>
+    <p class="muted">Apakah Anda ingin melanjutkan update tindak lanjut untuk temuan ini?</p>
+    <div class="modal-actions">
+      <button type="button" class="button button-secondary" id="confirm-no">Tidak</button>
+      <button type="button" class="button button-primary" id="confirm-yes">Ya, Lanjutkan</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Form update temuan -->
+<div id="update-modal" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modal-backdrop"></div>
+  <div class="modal-card card modal-wide">
+    <div class="section-head">
+      <h3 class="section-title">Update Tindak Lanjut</h3>
+      <button type="button" class="button button-ghost" id="update-close">✕</button>
+    </div>
+
+    <div class="stepper compact" id="update-stepper">
+      <div class="step-item active" data-step="1"><span>1</span> Foto After</div>
+      <div class="step-item" data-step="2"><span>2</span> Review</div>
+    </div>
+
+    <form id="update-form">
+      <input type="hidden" name="findingId" id="update-finding-id">
+      <div class="form-step active" data-step="1">
+        <label class="upload-card">
+          <span>Foto After (Sesudah Perbaikan)</span>
+          <input type="file" name="afterPhoto" id="after-photo" accept="image/*" capture="environment" required>
+        </label>
+        <div id="after-preview" class="photo-preview"></div>
+        <label>
+          <span>Tanggal & Waktu Penyelesaian</span>
+          <div class="input-with-action">
+            <input type="datetime-local" name="resolvedDatetime" id="resolved-datetime" required>
+            <button type="button" class="button button-secondary btn-now" data-target="resolved-datetime">Sekarang</button>
+          </div>
+          <small class="muted">Tidak boleh sebelum tanggal temuan.</small>
+        </label>
+      </div>
+      <div class="form-step" data-step="2">
+        <div class="review-panel" id="update-review"></div>
+      </div>
+      <div class="step-actions">
+        <button type="button" class="button button-secondary" id="update-prev">Kembali</button>
+        <button type="button" class="button button-primary" id="update-next">Lanjut</button>
+        <button type="submit" class="button button-primary hidden" id="update-submit">Submit Update</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+<div id="global-loading" class="global-loading hidden">Memuat...</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@latest/dist/xlsx.full.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/users.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/queries.js"></script>
+<script src="js/compress.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

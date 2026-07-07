@@ -1,0 +1,14 @@
+# Kredensial — JANGAN di-commit
+js/config.js
+.env
+.env.local
+.env.*.local
+
+# OS & editor
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+
+# Cursor / IDE (opsional)
+.cursor/
