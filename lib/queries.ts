@@ -1,8 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getCategoryLabel } from "@/lib/constants";
 
-const PHOTO_BUCKET = "finding-photos";
-const REPORT_BUCKET = "monthly-reports";
+export const PHOTO_BUCKET = "finding-photos";
+export const REPORT_BUCKET = "monthly-reports";
 
 export type Profile = {
   id: string;
@@ -38,6 +38,17 @@ export type Finding = {
   createdBy: string;
   createdAt: string;
   photos: FindingPhoto[];
+};
+
+export type MonthlyReport = {
+  id: string;
+  companyName: string;
+  reportMonth: string;
+  reportDate: string | null;
+  storagePath: string;
+  fileName: string;
+  createdAt: string;
+  uploadedBy: string | null;
 };
 
 function resolveAreaName(row: Record<string, unknown>) {
@@ -387,17 +398,44 @@ export async function uploadMonthlyReport(
       storage_path: storagePath,
       file_name: file.name,
     })
-    .select("id, report_month, report_date, file_name, created_at")
+    .select("id, company_name, report_month, report_date, storage_path, file_name, created_at, uploaded_by")
     .single();
   if (error) throw error;
-  return data;
+  return {
+    id: data.id as string,
+    companyName: data.company_name as string,
+    reportMonth: data.report_month as string,
+    reportDate: (data.report_date as string | null) || null,
+    storagePath: data.storage_path as string,
+    fileName: (data.file_name as string) || "",
+    createdAt: data.created_at as string,
+    uploadedBy: (data.uploaded_by as string | null) || null,
+  } satisfies MonthlyReport;
 }
 
 export async function getMonthlyReports(client: SupabaseClient) {
   const { data, error } = await client
     .from("monthly_reports")
-    .select("id, company_name, report_month, report_date, file_name, created_at")
+    .select("id, company_name, report_month, report_date, storage_path, file_name, created_at, uploaded_by")
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return data || [];
+  return ((data || []) as Array<{
+    id: string;
+    company_name: string;
+    report_month: string;
+    report_date: string | null;
+    storage_path: string;
+    file_name: string | null;
+    created_at: string;
+    uploaded_by: string | null;
+  }>).map((row) => ({
+    id: row.id,
+    companyName: row.company_name,
+    reportMonth: row.report_month,
+    reportDate: row.report_date,
+    storagePath: row.storage_path,
+    fileName: row.file_name || "",
+    createdAt: row.created_at,
+    uploadedBy: row.uploaded_by,
+  })) satisfies MonthlyReport[];
 }

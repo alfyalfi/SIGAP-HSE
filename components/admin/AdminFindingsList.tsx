@@ -5,6 +5,7 @@ import { STATUS_LABELS, formatDateTime } from "@/lib/constants";
 import type { Finding, Profile } from "@/lib/queries";
 import type { AdminDataProps } from "./AdminDashboard";
 import { AdminStatusBadge } from "./AdminStatusBadge";
+import { buildCsv, downloadTextFile } from "@/lib/export-utils";
 
 const PAGE_SIZE = 8;
 
@@ -17,26 +18,20 @@ function profileName(profiles: Profile[], id: string) {
 }
 
 function exportCsv(rows: Finding[], profiles: Profile[]) {
-  const header = ["Kode", "Tanggal", "Area", "Kategori", "Deskripsi", "PIC", "Perusahaan", "Status"];
-  const lines = rows.map((f) =>
-    [
+  const csv = buildCsv([
+    ["Kode", "Tanggal", "Area", "Kategori", "Deskripsi", "PIC", "Perusahaan", "Status"],
+    ...rows.map((f) => [
       f.code,
       f.foundDatetime || f.foundAt,
       f.areaName,
       f.categoryName,
-      `"${f.photoDescription.replace(/"/g, '""')}"`,
+      f.photoDescription,
       profileName(profiles, f.createdBy),
       f.companyName,
       f.status,
-    ].join(",")
-  );
-  const blob = new Blob([[header.join(","), ...lines].join("\n")], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `sigap-temuan-${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+    ]),
+  ]);
+  downloadTextFile(csv, `sigap-temuan-${new Date().toISOString().slice(0, 10)}.csv`, "text/csv;charset=utf-8");
 }
 
 export function AdminFindingsList({

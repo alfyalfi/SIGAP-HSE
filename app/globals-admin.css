@@ -419,6 +419,10 @@
   grid-template-columns: 2.2fr 1fr;
   gap: 14px;
 }
+.admin-bottom-stack {
+  display: grid;
+  gap: 14px;
+}
 .admin-panel {
   background: var(--surface);
   border: 1px solid var(--border);

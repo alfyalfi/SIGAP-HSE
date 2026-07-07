@@ -14,6 +14,7 @@ import {
   approveFinding,
   rejectFinding,
   updateProfile,
+  type MonthlyReport,
   type Finding,
   type Profile,
 } from "@/lib/queries";
@@ -21,17 +22,20 @@ import {
 type AdminWorkspaceProps = {
   initialFindings: Finding[];
   initialProfiles: Profile[];
+  initialReports: MonthlyReport[];
 };
 
 export function AdminWorkspace({
   initialFindings,
   initialProfiles,
+  initialReports,
 }: AdminWorkspaceProps) {
   const router = useRouter();
   const supabase = createClient();
   const [view, setView] = useState<AdminView>("dashboard");
   const [findings, setFindings] = useState(initialFindings);
   const [profiles, setProfiles] = useState(initialProfiles);
+  const [reports, setReports] = useState(initialReports);
   const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -43,9 +47,10 @@ export function AdminWorkspace({
   useEffect(() => {
     setFindings(initialFindings);
     setProfiles(initialProfiles);
+    setReports(initialReports);
     setLastSyncedAt(new Date());
     setSyncing(false);
-  }, [initialFindings, initialProfiles]);
+  }, [initialFindings, initialProfiles, initialReports]);
 
   const refresh = useCallback(() => {
     setSyncing(true);
@@ -150,7 +155,7 @@ export function AdminWorkspace({
           <AdminFindingsList {...dataProps} onViewFinding={openFinding} />
         )}
         {view === "analisis" && <AdminAnalytics {...dataProps} />}
-        {view === "laporan" && <AdminReports {...dataProps} />}
+        {view === "laporan" && <AdminReports {...dataProps} reports={reports} />}
         {view === "pic" && (
           <AdminMasterPic
             {...dataProps}

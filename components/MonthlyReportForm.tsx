@@ -3,23 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { uploadMonthlyReport } from "@/lib/queries";
-import { formatDateTime, toLocalDateValue } from "@/lib/constants";
-
-type Report = {
-  id: string;
-  report_month: string;
-  report_date?: string | null;
-  file_name: string;
-  created_at: string;
-};
+import { uploadMonthlyReport, type MonthlyReport } from "@/lib/queries";
+import { formatDate, formatDateTime, toLocalDateValue } from "@/lib/constants";
 
 export function MonthlyReportForm({
   companyName,
   reports,
 }: {
   companyName: string;
-  reports: Report[];
+  reports: MonthlyReport[];
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -79,23 +71,20 @@ export function MonthlyReportForm({
             <input type="file" name="reportFile" required />
             <small>Mendukung Excel, PDF, Word, dan format lainnya.</small>
           </label>
-          <button
-            type="submit"
-            className="button button-primary button-block"
-            disabled={loading}
-          >
+          <button type="submit" className="button button-primary button-block" disabled={loading}>
             {loading ? "Mengunggah..." : "Upload Laporan"}
           </button>
         </form>
+
         <div className="card">
           <h3 className="section-title">Riwayat Upload</h3>
           <div className="monthly-history">
             {reports.length ? (
               reports.map((r) => (
                 <div key={r.id} className="history-item">
-                  <strong>{r.file_name}</strong>
+                  <strong>{r.fileName}</strong>
                   <p className="muted">
-                    {r.report_date || r.report_month} · {formatDateTime(r.created_at)}
+                    {formatDate(r.reportDate || r.reportMonth)} · {formatDateTime(r.createdAt)}
                   </p>
                 </div>
               ))

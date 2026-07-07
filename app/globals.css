@@ -670,7 +670,11 @@ tbody tr:last-child td { border-bottom: none; }
 
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
-  .app-header { display: none; }
+  .app-header {
+    padding: 12px 14px 14px;
+    gap: 10px;
+    align-items: stretch;
+  }
   .auth-wrap { grid-template-columns: 1fr; }
   .auth-hero-desktop { display: none; }
   .auth-hero-mobile {
@@ -686,8 +690,31 @@ tbody tr:last-child td { border-bottom: none; }
   .auth-hero-mobile .auth-hero-desc {
     margin-top: 0;
   }
-  .main-nav { order: 3; width: 100%; overflow-x: auto; }
-  .header-actions { margin-left: 0; }
+  .main-nav { display: none; }
+  .header-brand {
+    width: 100%;
+    align-items: center;
+  }
+  .header-brand strong { font-size: 14px; }
+  .header-brand p { font-size: 11px; }
+  .header-actions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .header-actions .button-secondary {
+    flex: 1 1 124px;
+  }
+  .theme-toggle {
+    width: 40px;
+    height: 40px;
+  }
+  .user-pill {
+    flex: 1 1 190px;
+    min-width: 0;
+  }
   .app-main { padding: 16px 14px 40px; }
   .form-grid, .kpi-row, .monthly-grid, .filter-row { grid-template-columns: 1fr; }
   .dashboard-intro {
@@ -765,7 +792,11 @@ tbody tr:last-child td { border-bottom: none; }
 }
 
 @media (max-width: 480px) {
-  .user-pill div:last-child { display: none; }
+  .user-pill {
+    width: 100%;
+  }
+  .user-pill strong { font-size: 12px; }
+  .user-pill p { font-size: 10px; }
   .nav-link { padding: 9px 12px; font-size: 12px; }
   .auth-card { padding: 20px; }
   .login-tabs { margin-bottom: 16px; }
@@ -773,4 +804,7 @@ tbody tr:last-child td { border-bottom: none; }
   .sigap-hero-title { font-size: clamp(34px, 14vw, 48px); }
   .sigap-hero-subtitle { font-size: 13px; }
   .auth-hero-desc { font-size: 13px; }
+  .header-actions .button-secondary {
+    flex: 1 1 100%;
+  }
 }
