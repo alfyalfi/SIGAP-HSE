@@ -158,7 +158,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .sigap-logo {
   object-fit: contain;
   flex-shrink: 0;
-  border-radius: 10px;
+  border-radius: 0;
+  background: transparent;
 }
 
 .header-brand-link {
@@ -669,6 +670,7 @@ tbody tr:last-child td { border-bottom: none; }
 
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
+  .app-header { display: none; }
   .auth-wrap { grid-template-columns: 1fr; }
   .auth-hero-desktop { display: none; }
   .auth-hero-mobile {
@@ -684,20 +686,21 @@ tbody tr:last-child td { border-bottom: none; }
   .auth-hero-mobile .auth-hero-desc {
     margin-top: 0;
   }
-  .app-header { padding: 12px 16px; }
   .main-nav { order: 3; width: 100%; overflow-x: auto; }
   .header-actions { margin-left: 0; }
-  .app-main { padding: 20px 16px 40px; }
+  .app-main { padding: 16px 14px 40px; }
   .form-grid, .kpi-row, .monthly-grid, .filter-row { grid-template-columns: 1fr; }
   .dashboard-intro {
     flex-direction: column;
     align-items: stretch;
+    gap: 12px;
   }
   .dashboard-intro .button {
     width: 100%;
   }
   .step-actions {
     flex-direction: column;
+    gap: 10px;
   }
   .step-actions .button {
     width: 100%;
@@ -745,7 +748,7 @@ tbody tr:last-child td { border-bottom: none; }
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 42px;
+    min-height: 44px;
     border-radius: 14px;
     background: var(--surface-2);
     border: 1px solid var(--border);

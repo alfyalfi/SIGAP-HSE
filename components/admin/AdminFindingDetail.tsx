@@ -101,7 +101,7 @@ export function AdminFindingDetail({
       setShowDeletePin(false);
       onClose();
     } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : "Gagal menghapus");
+      setDeleteError(err instanceof Error ? err.message : "Gagal menghapus data.");
       throw err;
     } finally {
       setBusy(false);
@@ -190,8 +190,10 @@ export function AdminFindingDetail({
                 </div>
               </div>
 
-              <div className="admin-photo-set-label">Deskripsi Lengkap</div>
-              <div className="admin-detail-desc">{finding.photoDescription || "Tidak ada deskripsi."}</div>
+              <div className="admin-photo-set-label">Deskripsi Temuan</div>
+              <div className="admin-detail-desc">
+                {finding.photoDescription || "Tidak ada deskripsi yang dicatat."}
+              </div>
               {finding.afterDescription && (
                 <>
                   <div className="admin-photo-set-label">Deskripsi Tindak Lanjut</div>
@@ -214,10 +216,10 @@ export function AdminFindingDetail({
 
               {canReview && (
                 <div className="admin-review-box">
-                  <div className="eyebrow">Review Admin</div>
+                  <div className="eyebrow">Review Status</div>
                   <p className="muted" style={{ marginBottom: 12 }}>
-                    PIC telah mengunggah data after. Setujui untuk menutup temuan atau tolak untuk
-                    revisi ulang.
+                    Data tindak lanjut sudah tersedia. Tinjau kembali kelengkapan bukti sebelum
+                    menetapkan status akhir.
                   </p>
                   <div className="admin-action-row">
                     <button
@@ -226,7 +228,7 @@ export function AdminFindingDetail({
                       disabled={busy}
                       onClick={handleApprove}
                     >
-                      Setujui (Closed)
+                      Setujui dan Tutup
                     </button>
                     <button
                       type="button"
@@ -234,7 +236,7 @@ export function AdminFindingDetail({
                       disabled={busy}
                       onClick={handleReject}
                     >
-                      Tolak (Rejected)
+                      Minta Revisi
                     </button>
                   </div>
                 </div>
@@ -242,9 +244,10 @@ export function AdminFindingDetail({
 
               {onDelete && (
                 <div className="admin-danger-zone">
-                  <div className="eyebrow">Zona Berbahaya</div>
+                  <div className="eyebrow">Penghapusan Permanen</div>
                   <p className="muted" style={{ marginBottom: 12, fontSize: 13 }}>
-                    Hapus temuan beserta foto secara permanen. Tindakan ini tidak dapat dibatalkan.
+                    Gunakan hanya untuk data duplikat atau salah input. Seluruh foto terkait akan
+                    terhapus dan aksi ini tidak dapat dibatalkan.
                   </p>
                   <button
                     type="button"
@@ -252,7 +255,7 @@ export function AdminFindingDetail({
                     disabled={busy}
                     onClick={() => setShowDeletePin(true)}
                   >
-                    Hapus Temuan
+                    Hapus Permanen
                   </button>
                   {deleteError && !showDeletePin && (
                     <p style={{ color: "var(--accent-red)", fontSize: 12, marginTop: 8 }}>
@@ -285,8 +288,8 @@ export function AdminFindingDetail({
 
       <AdminPinModal
         open={showDeletePin}
-        title="Hapus Temuan?"
-        message={`Temuan ${finding.code} akan dihapus permanen beserta seluruh foto. Masukkan PIN admin untuk konfirmasi.`}
+        title="Konfirmasi Hapus"
+        message={`Temuan ${finding.code} akan dihapus permanen beserta seluruh foto terkait. Masukkan PIN admin untuk melanjutkan.`}
         confirmLabel="Hapus Permanen"
         busy={busy}
         onClose={() => {

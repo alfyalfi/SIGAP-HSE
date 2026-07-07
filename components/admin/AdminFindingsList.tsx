@@ -131,11 +131,7 @@ export function AdminFindingsList({
             </svg>
             CSV
           </button>
-          <button
-            type="button"
-            className="admin-btn admin-btn-sm"
-            onClick={() => window.print()}
-          >
+          <button type="button" className="admin-btn admin-btn-sm" onClick={() => window.print()}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M6 9V2h12v7" />
               <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
@@ -193,18 +189,18 @@ export function AdminFindingsList({
                 type="button"
                 className="admin-finding-card"
                 onClick={() => onViewFinding?.(f)}
-                title="Buka detail temuan untuk review atau hapus data"
+                title="Buka detail temuan"
               >
                 <div className="admin-finding-card-top">
                   <span className="mono admin-id-cell">{f.code}</span>
                   <AdminStatusBadge status={f.status} />
                 </div>
-                <div className="admin-finding-card-title">{f.title || f.photoDescription || "—"}</div>
+                <div className="admin-finding-card-title">{f.title || f.photoDescription || "-"}</div>
                 <div className="admin-finding-card-meta">
                   {formatDateTime(f.foundDatetime || f.foundAt)} · {f.areaName}
                 </div>
                 <div className="admin-finding-card-meta">{profileName(profiles, f.createdBy)}</div>
-                <div className="admin-finding-card-meta">Ketuk untuk detail lengkap.</div>
+                <div className="admin-finding-card-meta">Buka detail untuk riwayat dan tindakan.</div>
               </button>
             ))
           ) : (
@@ -236,13 +232,13 @@ export function AdminFindingsList({
                     <td>{f.areaName}</td>
                     <td>{f.categoryName}</td>
                     <td style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {f.photoDescription || "—"}
+                      {f.photoDescription || "-"}
                     </td>
                     <td>{profileName(profiles, f.createdBy)}</td>
                     <td>
                       <div className="admin-photo-chip">
-                        <span title="Before">{before || "—"}</span>
-                        <span title="After">{after || "—"}</span>
+                        <span title="Before">{before || "-"}</span>
+                        <span title="After">{after || "-"}</span>
                       </div>
                     </td>
                     <td>
@@ -262,7 +258,7 @@ export function AdminFindingsList({
         </table>
         <div className="admin-table-foot">
           <span>
-            Menampilkan {pageRows.length ? (currentPage - 1) * PAGE_SIZE + 1 : 0}–
+            Menampilkan {pageRows.length ? (currentPage - 1) * PAGE_SIZE + 1 : 0}-
             {(currentPage - 1) * PAGE_SIZE + pageRows.length} dari {filtered.length} temuan
           </span>
           <div className="admin-pagination">
