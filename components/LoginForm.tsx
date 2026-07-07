@@ -131,7 +131,14 @@ export function LoginForm() {
                 </select>
               </label>
               <button type="submit" className="button button-primary button-block" disabled={loading}>
-                Masuk
+                {loading ? (
+                  <>
+                    <span className="button-spinner" aria-hidden />
+                    Memproses...
+                  </>
+                ) : (
+                  "Masuk"
+                )}
               </button>
               <p className="helper-text">Pilih nama PT Anda - tanpa password.</p>
             </form>
@@ -159,7 +166,14 @@ export function LoginForm() {
                 </small>
               </label>
               <button type="submit" className="button button-primary button-block" disabled={loading}>
-                Masuk sebagai Admin
+                {loading ? (
+                  <>
+                    <span className="button-spinner" aria-hidden />
+                    Memverifikasi...
+                  </>
+                ) : (
+                  "Masuk sebagai Admin"
+                )}
               </button>
             </form>
           )}

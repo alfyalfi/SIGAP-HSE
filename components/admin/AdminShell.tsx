@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { SIGAP_COPYRIGHT, SIGAP_FULL_NAME, formatDateTime } from "@/lib/constants";
 import { SigapLogo } from "@/components/SigapLogo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export type AdminView = "dashboard" | "temuan" | "analisis" | "laporan" | "pic";
 
@@ -227,6 +228,7 @@ export function AdminShell({
               </div>
             </div>
             <div className="admin-topbar-actions">
+              <ThemeToggle className="theme-toggle-admin" label="Ganti tema admin" />
               <span className="admin-datetime">{datetimeLabel}</span>
               {onRefresh && (
                 <button type="button" className="admin-btn" onClick={onRefresh}>

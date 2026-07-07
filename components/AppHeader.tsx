@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { SigapLogo } from "./SigapLogo";
@@ -16,11 +17,18 @@ const USER_NAV = [
 export function AppHeader({ profile }: { profile: Profile }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [loggingOut, setLoggingOut] = useState(false);
 
   async function logout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
-    router.refresh();
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      router.push("/login");
+      router.refresh();
+    } finally {
+      setLoggingOut(false);
+    }
   }
 
   const subtitle =
@@ -62,8 +70,15 @@ export function AppHeader({ profile }: { profile: Profile }) {
             <p>PIC</p>
           </div>
         </div>
-        <button type="button" className="button button-secondary" onClick={logout}>
-          Logout
+        <button type="button" className="button button-secondary button-loading" onClick={logout} disabled={loggingOut}>
+          {loggingOut ? (
+            <>
+              <span className="button-spinner" aria-hidden />
+              Keluar...
+            </>
+          ) : (
+            "Logout"
+          )}
         </button>
       </div>
     </header>

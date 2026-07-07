@@ -25,6 +25,20 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="id" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var theme = localStorage.getItem('sigap:theme');
+                  if (theme) document.documentElement.dataset.theme = theme;
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className={`${inter.variable} ${jakarta.variable} ${mono.variable}`}>
         {children}
       </body>
