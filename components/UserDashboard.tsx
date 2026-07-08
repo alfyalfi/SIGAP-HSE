@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { StatusBadge } from "./StatusBadge";
+import { MobileRecordCard } from "./MobileRecordCard";
 import { type Finding } from "@/lib/queries";
 import { formatDateTime } from "@/lib/constants";
 
@@ -110,7 +111,9 @@ export function UserDashboard({ findings }: { findings: Finding[] }) {
               <select value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)}>
                 <option value="">Semua area</option>
                 {areas.map((a) => (
-                  <option key={a} value={a}>{a}</option>
+                  <option key={a} value={a}>
+                    {a}
+                  </option>
                 ))}
               </select>
             </label>
@@ -122,27 +125,41 @@ export function UserDashboard({ findings }: { findings: Finding[] }) {
         )}
       </div>
 
-      <div className="finding-cards mobile-only">
+      <div className="finding-cards mobile-only mobile-record-card-list">
         {filtered.length ? (
           filtered.map((f) => (
-            <button
+            <MobileRecordCard
               key={f.id}
-              type="button"
-              className={`finding-card${canUpdate(f) ? " actionable" : ""}`}
-              onClick={() => openFinding(f)}
-              disabled={!canUpdate(f)}
-            >
-              <div className="finding-card-top">
-                <span className="mono">{f.code}</span>
-                <StatusBadge status={f.status} />
-              </div>
-              <div className="finding-card-title">{f.title}</div>
-              <div className="finding-card-meta">{formatDateTime(f.foundDatetime || f.foundAt)}</div>
-              <div className="finding-card-meta">{f.areaName} · {f.categoryName}</div>
-            </button>
+              className="finding-card"
+              title={f.code}
+              subtitle={f.title}
+              badge={<StatusBadge status={f.status} />}
+              sections={[
+                {
+                  title: "Informasi utama",
+                  fields: [
+                    { label: "Tanggal", value: formatDateTime(f.foundDatetime || f.foundAt) },
+                    { label: "Area", value: f.areaName },
+                    { label: "Kategori", value: f.categoryName },
+                  ],
+                },
+              ]}
+              actions={
+                <button
+                  type="button"
+                  className="button button-primary"
+                  onClick={() => openFinding(f)}
+                  disabled={!canUpdate(f)}
+                >
+                  {canUpdate(f) ? "Lanjutkan" : "Belum dapat diproses"}
+                </button>
+              }
+            />
           ))
         ) : (
-          <p className="muted card" style={{ padding: 20 }}>Belum ada temuan.</p>
+          <p className="muted card" style={{ padding: 20 }}>
+            Belum ada temuan.
+          </p>
         )}
       </div>
 
@@ -172,12 +189,16 @@ export function UserDashboard({ findings }: { findings: Finding[] }) {
                     <td>{formatDateTime(f.foundDatetime || f.foundAt)}</td>
                     <td>{f.areaName}</td>
                     <td>{f.categoryName}</td>
-                    <td><StatusBadge status={f.status} /></td>
+                    <td>
+                      <StatusBadge status={f.status} />
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="muted">Belum ada temuan.</td>
+                  <td colSpan={6} className="muted">
+                    Belum ada temuan.
+                  </td>
                 </tr>
               )}
             </tbody>

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Finding, Profile } from "@/lib/queries";
 import type { AdminDataProps } from "./AdminDashboard";
+import { MobileRecordCard } from "../MobileRecordCard";
 
 type PicRow = Profile & {
   total: number;
@@ -50,15 +51,13 @@ export function AdminMasterPic({
   useEffect(() => {
     setLocalProfiles(profiles);
   }, [profiles]);
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Profile | null>(null);
   const [name, setName] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  const rows = useMemo(
-    () => buildPicRows(findings, localProfiles),
-    [findings, localProfiles]
-  );
+  const rows = useMemo(() => buildPicRows(findings, localProfiles), [findings, localProfiles]);
 
   const totals = useMemo(() => {
     const total = rows.reduce((s, r) => s + r.total, 0);
@@ -83,9 +82,7 @@ export function AdminMasterPic({
     if (!name.trim()) return;
     if (editing) {
       await onPicEdit?.(editing.id, { full_name: name.trim() });
-      setLocalProfiles((prev) =>
-        prev.map((p) => (p.id === editing.id ? { ...p, full_name: name.trim() } : p))
-      );
+      setLocalProfiles((prev) => prev.map((p) => (p.id === editing.id ? { ...p, full_name: name.trim() } : p)));
     } else {
       const newId = `pic-${Date.now()}`;
       const payload = { full_name: name.trim(), role: "field_staff" };
@@ -130,82 +127,132 @@ export function AdminMasterPic({
       </div>
 
       <div className="admin-table-panel">
-        <table>
-          <thead>
-            <tr>
-              <th>PIC</th>
-              <th>Peran</th>
-              <th>Total Ditangani</th>
-              <th>Open</th>
-              <th>On Progress</th>
-              <th>Closed</th>
-              <th>Tingkat Penyelesaian</th>
-              <th>Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length ? (
-              rows.map((r) => (
-                <tr key={r.id} style={{ cursor: "default" }}>
-                  <td>
-                    <div className="admin-pic-cell">
-                      <span className="admin-avatar">
-                        {(r.full_name || "P").slice(0, 2).toUpperCase()}
-                      </span>
-                      {r.full_name || "—"}
-                    </div>
-                  </td>
-                  <td className="muted">{r.role === "field_staff" ? "PIC Lapangan" : r.role}</td>
-                  <td>{r.total}</td>
-                  <td>{r.open}</td>
-                  <td>{r.progress}</td>
-                  <td>{r.closed}</td>
-                  <td>
-                    <div className="admin-bar-cell">
-                      <div className="admin-bar-track">
-                        <div className="admin-bar-fill" style={{ width: `${r.rate}%` }} />
+        <div className="mobile-only admin-mobile-card-list">
+          {rows.length ? (
+            rows.map((r) => (
+              <MobileRecordCard
+                key={r.id}
+                title={r.full_name || "PIC"}
+                badge={
+                  <span className="mobile-record-chip info">
+                    {r.role === "field_staff" ? "PIC Lapangan" : r.role}
+                  </span>
+                }
+                sections={[
+                  {
+                    title: "Ringkasan PIC",
+                    fields: [
+                      { label: "Total ditangani", value: r.total },
+                      { label: "Open", value: r.open },
+                      { label: "On progress", value: r.progress },
+                    ],
+                  },
+                ]}
+                detailsLabel="Lihat statistik lengkap"
+                detailsSections={[
+                  {
+                    title: "Detail performa",
+                    fields: [
+                      { label: "Closed", value: r.closed },
+                      { label: "Tingkat penyelesaian", value: `${r.rate}%` },
+                    ],
+                  },
+                ]}
+                actions={
+                  <div className="mobile-record-card-actions">
+                    <button type="button" className="admin-btn" onClick={() => openEdit(r)}>
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-btn admin-btn-danger"
+                      onClick={() => setDeleteConfirm(r.id)}
+                    >
+                      Hapus
+                    </button>
+                  </div>
+                }
+              />
+            ))
+          ) : (
+            <div className="admin-empty">Belum ada data PIC. Tambahkan PIC baru untuk memulai.</div>
+          )}
+        </div>
+
+        <div className="desktop-only">
+          <table>
+            <thead>
+              <tr>
+                <th>PIC</th>
+                <th>Peran</th>
+                <th>Total Ditangani</th>
+                <th>Open</th>
+                <th>On Progress</th>
+                <th>Closed</th>
+                <th>Tingkat Penyelesaian</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length ? (
+                rows.map((r) => (
+                  <tr key={r.id} style={{ cursor: "default" }}>
+                    <td>
+                      <div className="admin-pic-cell">
+                        <span className="admin-avatar">{(r.full_name || "P").slice(0, 2).toUpperCase()}</span>
+                        {r.full_name || "—"}
                       </div>
-                      <span className="mono">{r.rate}%</span>
-                    </div>
-                  </td>
-                  <td>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <button
-                        type="button"
-                        className="admin-btn admin-btn-sm admin-btn-ghost"
-                        onClick={() => openEdit(r)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        className="admin-btn admin-btn-sm admin-btn-danger"
-                        onClick={() => setDeleteConfirm(r.id)}
-                      >
-                        Hapus
-                      </button>
-                    </div>
+                    </td>
+                    <td className="muted">{r.role === "field_staff" ? "PIC Lapangan" : r.role}</td>
+                    <td>{r.total}</td>
+                    <td>{r.open}</td>
+                    <td>{r.progress}</td>
+                    <td>{r.closed}</td>
+                    <td>
+                      <div className="admin-bar-cell">
+                        <div className="admin-bar-track">
+                          <div className="admin-bar-fill" style={{ width: `${r.rate}%` }} />
+                        </div>
+                        <span className="mono">{r.rate}%</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button
+                          type="button"
+                          className="admin-btn admin-btn-sm admin-btn-ghost"
+                          onClick={() => openEdit(r)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="admin-btn admin-btn-sm admin-btn-danger"
+                          onClick={() => setDeleteConfirm(r.id)}
+                        >
+                          Hapus
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={8} className="admin-empty">
+                    Belum ada data PIC. Tambahkan PIC baru untuk memulai.
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={8} className="admin-empty">
-                  Belum ada data PIC. Tambahkan PIC baru untuk memulai.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {modalOpen && (
         <div className="admin-overlay" onClick={() => setModalOpen(false)}>
           <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
             <div className="admin-detail-top">
-              <div className="admin-modal-title">
-                {editing ? "Edit PIC" : "Tambah PIC Baru"}
-              </div>
+              <div className="admin-modal-title">{editing ? "Edit PIC" : "Tambah PIC Baru"}</div>
               <button type="button" className="admin-modal-close" onClick={() => setModalOpen(false)}>
                 ×
               </button>
@@ -249,11 +296,7 @@ export function AdminMasterPic({
               <button type="button" className="admin-btn" onClick={() => setDeleteConfirm(null)}>
                 Batal
               </button>
-              <button
-                type="button"
-                className="admin-btn admin-btn-danger"
-                onClick={() => handleDelete(deleteConfirm)}
-              >
+              <button type="button" className="admin-btn admin-btn-danger" onClick={() => handleDelete(deleteConfirm)}>
                 Hapus
               </button>
             </div>

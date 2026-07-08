@@ -22,6 +22,7 @@ import {
 } from "@/lib/constants";
 import type { Finding, Profile } from "@/lib/queries";
 import { AdminStatusBadge } from "./AdminStatusBadge";
+import { MobileRecordCard } from "../MobileRecordCard";
 
 Chart.register(
   CategoryScale,
@@ -466,52 +467,81 @@ export function AdminDashboard({
               <div className="admin-panel-title">Temuan Terbaru</div>
               <div className="admin-panel-sub">Laporan terakhir masuk ke sistem</div>
             </div>
-            {onNavigate && (
+          {onNavigate && (
               <button type="button" className="admin-panel-link" onClick={() => onNavigate("temuan")}>
                 Lihat semua →
               </button>
             )}
           </div>
           <div className="admin-table-panel" style={{ border: "none", boxShadow: "none" }}>
-            <table>
-              <thead>
-                <tr>
-                  <th>ID Temuan</th>
-                  <th>Lokasi</th>
-                  <th>Kategori</th>
-                  <th>PIC</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentFindings.length ? (
-                  recentFindings.map((f) => (
-                    <tr key={f.id} onClick={() => onViewFinding?.(f)}>
-                      <td className="admin-id-cell">{f.code}</td>
-                      <td>{f.areaName}</td>
-                      <td>{f.categoryName}</td>
-                      <td>
-                        <div className="admin-pic-cell">
-                          <span className="admin-avatar">
-                            {initials(profileName(profiles, f.createdBy))}
-                          </span>
-                          {profileName(profiles, f.createdBy)}
-                        </div>
-                      </td>
-                      <td>
-                        <AdminStatusBadge status={f.status} />
+            <div className="mobile-only admin-mobile-card-list">
+              {recentFindings.length ? (
+                recentFindings.map((f) => (
+                  <MobileRecordCard
+                    key={f.id}
+                    title={f.code}
+                    subtitle={f.title || f.photoDescription || "-"}
+                    badge={<AdminStatusBadge status={f.status} />}
+                    sections={[
+                      {
+                        title: "Informasi utama",
+                        fields: [
+                          { label: "Lokasi", value: f.areaName },
+                          { label: "Kategori", value: f.categoryName },
+                          { label: "PIC", value: profileName(profiles, f.createdBy) },
+                        ],
+                      },
+                    ]}
+                    actions={
+                      <button type="button" className="admin-btn" onClick={() => onViewFinding?.(f)}>
+                        Buka detail
+                      </button>
+                    }
+                  />
+                ))
+              ) : (
+                <div className="admin-empty">Belum ada temuan yang cocok dengan filter.</div>
+              )}
+            </div>
+            <div className="desktop-only">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID Temuan</th>
+                    <th>Lokasi</th>
+                    <th>Kategori</th>
+                    <th>PIC</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentFindings.length ? (
+                    recentFindings.map((f) => (
+                      <tr key={f.id} onClick={() => onViewFinding?.(f)}>
+                        <td className="admin-id-cell">{f.code}</td>
+                        <td>{f.areaName}</td>
+                        <td>{f.categoryName}</td>
+                        <td>
+                          <div className="admin-pic-cell">
+                            <span className="admin-avatar">{initials(profileName(profiles, f.createdBy))}</span>
+                            {profileName(profiles, f.createdBy)}
+                          </div>
+                        </td>
+                        <td>
+                          <AdminStatusBadge status={f.status} />
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="admin-empty">
+                        Belum ada temuan yang cocok dengan filter.
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={5} className="admin-empty">
-                      Belum ada temuan yang cocok dengan filter.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 

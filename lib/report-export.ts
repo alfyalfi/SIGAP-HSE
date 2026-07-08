@@ -269,26 +269,27 @@ function createSummaryChartDataUrl(context: ExportContext) {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas context tidak tersedia.");
 
-  ctx.fillStyle = "#F8FAFC";
+  ctx.fillStyle = "#F4F5F9";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
-  gradient.addColorStop(0, "#1F2937");
-  gradient.addColorStop(1, "#FF8A3D");
-  ctx.fillStyle = gradient;
+  ctx.fillStyle = "#111827";
   drawRoundedRect(ctx, 24, 24, 1352, 108, 24);
+  ctx.fill();
+
+  ctx.fillStyle = "#FBBF24";
+  drawRoundedRect(ctx, 24, 124, 1352, 8, 999);
   ctx.fill();
 
   ctx.fillStyle = "#FFFFFF";
   ctx.font = '700 38px "Times New Roman"';
   ctx.fillText(context.title, 56, 72);
-  ctx.font = '400 18px "Times New Roman"';
+  ctx.font = '400 18px Arial';
   ctx.fillText(`Diekspor ${formatDateTime(context.generatedAt)} | Data terpilih: ${context.summary.total}`, 56, 104);
 
   const cards = [
-    ["Total", String(context.summary.total), "#3B82F6"],
+    ["Total", String(context.summary.total), "#FBBF24"],
     ["Open", String(context.summary.open), "#EF4444"],
-    ["Progress", String(context.summary.progress), "#FBBF24"],
+    ["Progress", String(context.summary.progress), "#F59E0B"],
     ["Closed", `${context.summary.closed} (${context.summary.closedRate}%)`, "#22C55E"],
   ];
 
@@ -299,9 +300,9 @@ function createSummaryChartDataUrl(context: ExportContext) {
 
   const statusBars: Array<[string, number, string]> = [
     ["Open", context.summary.open, "#EF4444"],
-    ["Progress", context.summary.progress, "#FBBF24"],
+    ["Progress", context.summary.progress, "#F59E0B"],
     ["Closed", context.summary.closed, "#22C55E"],
-    ["Rejected", context.summary.rejected, "#EF4444"],
+    ["Rejected", context.summary.rejected, "#6B7280"],
   ];
   const maxStatus = Math.max(1, ...statusBars.map(([, value]) => value));
 
@@ -357,6 +358,242 @@ function createSummaryChartDataUrl(context: ExportContext) {
   });
 
   return canvas.toDataURL("image/png");
+}
+
+function ellipsize(ctx: CanvasRenderingContext2D, value: string, maxWidth: number) {
+  if (ctx.measureText(value).width <= maxWidth) return value;
+  const ellipsis = "...";
+  let end = value.length;
+  while (end > 0 && ctx.measureText(`${value.slice(0, end)}${ellipsis}`).width > maxWidth) {
+    end -= 1;
+  }
+  return `${value.slice(0, end)}${ellipsis}`;
+}
+
+function drawPanel(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, title: string, subtitle: string) {
+  drawRoundedRect(ctx, x, y, w, h, 24);
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fill();
+  ctx.strokeStyle = "#E5E7EB";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = "#111827";
+  ctx.font = '700 24px "Times New Roman"';
+  ctx.fillText(title, x + 24, y + 36);
+  ctx.fillStyle = "#6B7280";
+  ctx.font = '400 14px Arial';
+  ctx.fillText(subtitle, x + 24, y + 58);
+}
+
+function drawMetricCard(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  title: string,
+  value: string,
+  accent: string,
+  subtitle?: string
+) {
+  drawRoundedRect(ctx, x, y, w, 132, 20);
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fill();
+  ctx.strokeStyle = "#E5E7EB";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = accent;
+  drawRoundedRect(ctx, x, y, 8, 132, 999);
+  ctx.fill();
+  ctx.fillStyle = "#6B7280";
+  ctx.font = '700 12px Arial';
+  ctx.fillText(title.toUpperCase(), x + 22, y + 32);
+  ctx.fillStyle = "#111827";
+  ctx.font = '700 34px "Times New Roman"';
+  ctx.fillText(value, x + 22, y + 78);
+  if (subtitle) {
+    ctx.fillStyle = "#6B7280";
+    ctx.font = '400 12px Arial';
+    ctx.fillText(subtitle, x + 22, y + 102);
+  }
+}
+
+function drawChip(ctx: CanvasRenderingContext2D, x: number, y: number, text: string, tone: "success" | "warning" | "danger" | "neutral") {
+  const width = Math.max(76, ctx.measureText(text).width + 24);
+  const fill = tone === "success" ? "#DCFCE7" : tone === "warning" ? "#FEF3C7" : tone === "danger" ? "#FEE2E2" : "#E5E7EB";
+  const textColor = tone === "success" ? "#166534" : tone === "warning" ? "#A16207" : tone === "danger" ? "#991B1B" : "#374151";
+  ctx.fillStyle = fill;
+  drawRoundedRect(ctx, x, y - 18, width, 28, 999);
+  ctx.fill();
+  ctx.fillStyle = textColor;
+  ctx.font = '700 11px Arial';
+  ctx.fillText(text, x + 12, y + 2);
+}
+
+function drawRecentTable(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  title: string,
+  subtitle: string,
+  rows: ExportContext["rows"]
+) {
+  const headers = [
+    ["Kode", 140],
+    ["Area", 220],
+    ["Kategori", 200],
+    ["PIC", 210],
+    ["Status", 110],
+  ] as const;
+  const rowHeight = 58;
+  const visibleRows = rows.slice(0, 7);
+
+  drawRoundedRect(ctx, x, y, w, h, 24);
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fill();
+  ctx.strokeStyle = "#E5E7EB";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.fillStyle = "#111827";
+  ctx.font = '700 24px "Times New Roman"';
+  ctx.fillText(title, x + 24, y + 36);
+  ctx.fillStyle = "#6B7280";
+  ctx.font = '400 14px Arial';
+  ctx.fillText(subtitle, x + 24, y + 58);
+
+  drawRoundedRect(ctx, x + 14, y + 74, w - 28, 34, 16);
+  ctx.fillStyle = "#F9FAFB";
+  ctx.fill();
+
+  let cursorX = x + 18;
+  ctx.fillStyle = "#6B7280";
+  ctx.font = '700 12px Arial';
+  headers.forEach(([label, width]) => {
+    ctx.fillText(label, cursorX, y + 96);
+    cursorX += width;
+  });
+
+  visibleRows.forEach((row, index) => {
+    const rowY = y + 132 + index * rowHeight;
+    if (index % 2 === 0) {
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(x + 10, rowY - 20, w - 20, 46);
+    }
+    ctx.fillStyle = "#111827";
+    ctx.font = '700 13px Arial';
+    ctx.fillText(ellipsize(ctx, row.code, 130), x + 18, rowY + 4);
+    ctx.font = '400 13px Arial';
+    ctx.fillText(ellipsize(ctx, row.area, 200), x + 158, rowY + 4);
+    ctx.fillText(ellipsize(ctx, row.category, 180), x + 378, rowY + 4);
+    ctx.fillText(ellipsize(ctx, row.pic, 190), x + 580, rowY + 4);
+    const tone = row.status === "closed" ? "success" : row.status === "progress" ? "warning" : row.status === "rejected" ? "danger" : "neutral";
+    drawChip(ctx, x + 782, rowY + 4, row.statusLabel, tone);
+  });
+}
+
+function drawDistributionPanel(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  title: string,
+  subtitle: string,
+  items: Array<{ name: string; value: number; tone: string }>
+) {
+  drawPanel(ctx, x, y, w, 250 + items.length * 48, title, subtitle);
+  const maxValue = Math.max(1, ...items.map((item) => item.value));
+  items.forEach((item, index) => {
+    const rowY = y + 92 + index * 48;
+    ctx.fillStyle = "#111827";
+    ctx.font = '700 13px Arial';
+    ctx.fillText(ellipsize(ctx, item.name, 150), x + 24, rowY + 4);
+    ctx.fillStyle = "#E5E7EB";
+    drawRoundedRect(ctx, x + 180, rowY - 12, w - 258, 20, 999);
+    ctx.fill();
+    ctx.fillStyle = item.tone;
+    drawRoundedRect(ctx, x + 180, rowY - 12, Math.max(18, ((w - 258) * item.value) / maxValue), 20, 999);
+    ctx.fill();
+    ctx.fillStyle = "#111827";
+    ctx.font = '700 13px Arial';
+    ctx.fillText(String(item.value), x + w - 48, rowY + 4);
+  });
+}
+
+export async function buildProfessionalJpgBlob(title: string, context: ExportContext) {
+  const canvas = ensureCanvas();
+  canvas.width = 1800;
+  canvas.height = 1280;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas context tidak tersedia.");
+
+  ctx.fillStyle = "#F4F5F9";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = "#111827";
+  drawRoundedRect(ctx, 40, 36, 1720, 132, 28);
+  ctx.fill();
+  ctx.fillStyle = "#FBBF24";
+  drawRoundedRect(ctx, 40, 160, 1720, 8, 999);
+  ctx.fill();
+
+  ctx.fillStyle = "#FFFFFF";
+  ctx.font = '700 46px "Times New Roman"';
+  ctx.fillText(title, 76, 92);
+  ctx.font = '400 18px Arial';
+  ctx.fillText(`SIGAP HSE export snapshot | ${formatDateTime(context.generatedAt)}`, 76, 126);
+  ctx.font = '700 12px Arial';
+  ctx.fillStyle = "#E5E7EB";
+  ctx.fillText(`Filter: Status ${context.filters.status || "Semua"}  |  Area ${context.filters.area || "Semua"}  |  Kategori ${context.filters.category || "Semua"}  |  Perusahaan ${context.filters.company || "Semua"}`, 76, 152);
+
+  drawMetricCard(ctx, 40, 210, 410, "Total", String(context.summary.total), "#FBBF24", "Semua data terpilih");
+  drawMetricCard(ctx, 470, 210, 410, "Open", String(context.summary.open), "#EF4444", "Butuh tindak lanjut");
+  drawMetricCard(ctx, 900, 210, 410, "Progress", String(context.summary.progress), "#F59E0B", "Sedang diproses");
+  drawMetricCard(ctx, 1330, 210, 430, "Closed", `${context.summary.closed} (${context.summary.closedRate}%)`, "#22C55E", "Selesai dan terdokumentasi");
+
+  drawRecentTable(ctx, 40, 376, 1080, 840, "Temuan Terbaru", "Ringkasan baris teratas untuk dibaca cepat", context.rows);
+
+  drawDistributionPanel(
+    ctx,
+    1160,
+    376,
+    600,
+    "Status Distribusi",
+    "Komposisi status pada data terpilih",
+    [
+      { name: "Open", value: context.summary.open, tone: "#EF4444" },
+      { name: "Progress", value: context.summary.progress, tone: "#F59E0B" },
+      { name: "Closed", value: context.summary.closed, tone: "#22C55E" },
+      { name: "Rejected", value: context.summary.rejected, tone: "#6B7280" },
+    ]
+  );
+
+  drawDistributionPanel(
+    ctx,
+    1160,
+    664,
+    600,
+    "Top Kategori",
+    "Kategori yang paling sering muncul",
+    context.categoryBreakdown.slice(0, 6).map((item, index) => ({
+      name: item.name,
+      value: item.count,
+      tone: index % 2 === 0 ? "#FBBF24" : "#111827",
+    }))
+  );
+
+  ctx.fillStyle = "#6B7280";
+  ctx.font = '400 12px Arial';
+  ctx.fillText("Data source: export terfilter. Tampilan dirancang minimalis, profesional, dan siap presentasi.", 40, 1248);
+
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((value) => {
+      if (!value) reject(new Error("Gagal membuat JPG."));
+      else resolve(value);
+    }, "image/jpeg", 0.95);
+  });
+  return blob;
 }
 
 function setSheetBaseStyle(sheet: Worksheet) {

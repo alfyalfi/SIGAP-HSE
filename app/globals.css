@@ -562,6 +562,244 @@ tbody tr:last-child td { border-bottom: none; }
 .row-clickable { cursor: pointer; }
 .row-clickable:hover { background: var(--surface-2); }
 
+.mobile-only { display: none; }
+.desktop-only { display: block; }
+
+.mobile-record-card-list {
+  display: grid;
+  gap: 12px;
+}
+
+.mobile-record-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 10px 24px rgba(20, 21, 26, 0.06);
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+  position: relative;
+  overflow: hidden;
+}
+
+.mobile-record-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, #fbbf24, #6b7280);
+}
+
+.mobile-record-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mobile-record-card-heading {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.mobile-record-card-title {
+  font-size: 16px;
+  line-height: 1.35;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.mobile-record-card-subtitle {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.mobile-record-card-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: flex-start;
+}
+
+.mobile-record-card-body {
+  display: grid;
+  gap: 12px;
+}
+
+.mobile-record-card-section {
+  display: grid;
+  gap: 10px;
+}
+
+.mobile-record-card-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.mobile-record-field {
+  display: grid;
+  grid-template-columns: 86px 10px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.mobile-record-field-label {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.45;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.mobile-record-field-separator {
+  color: var(--text-faint);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.mobile-record-field-value {
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.mobile-record-card-details {
+  border-top: 1px solid var(--border);
+  padding-top: 2px;
+}
+
+.mobile-record-card-details > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 0 4px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mobile-record-card-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.mobile-record-card-details > summary::after {
+  content: "▾";
+  color: var(--text-secondary);
+  font-size: 12px;
+  transition: transform 0.18s ease;
+}
+
+.mobile-record-card-details[open] > summary::after {
+  transform: rotate(180deg);
+}
+
+.mobile-record-card-details-body {
+  padding-top: 8px;
+}
+
+.mobile-record-card-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.mobile-record-card-actions > * {
+  width: 100%;
+  justify-content: center;
+}
+
+.mobile-progress {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+}
+
+.mobile-progress-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.mobile-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #fbbf24, #111827);
+}
+
+.mobile-record-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.mobile-record-chip.success {
+  border-color: rgba(34, 197, 94, 0.24);
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--accent-green);
+}
+
+.mobile-record-chip.warning {
+  border-color: rgba(251, 191, 36, 0.24);
+  background: rgba(251, 191, 36, 0.16);
+  color: #a16207;
+}
+
+.mobile-record-chip.danger {
+  border-color: rgba(239, 68, 68, 0.24);
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--accent-red);
+}
+
+.mobile-record-chip.info {
+  border-color: rgba(59, 130, 246, 0.24);
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--accent-blue);
+}
+
+@media (max-width: 520px) {
+  .mobile-record-card {
+    padding: 14px;
+    gap: 12px;
+  }
+  .mobile-record-field {
+    grid-template-columns: 78px 8px minmax(0, 1fr);
+    padding: 7px 8px;
+  }
+  .mobile-record-card-title {
+    font-size: 15px;
+  }
+  .mobile-record-card-subtitle {
+    font-size: 12px;
+  }
+}
+
 .status-badge {
   display: inline-flex;
   align-items: center;
@@ -885,6 +1123,11 @@ tbody tr:last-child td { border-bottom: none; }
   .header-actions .button-secondary {
     flex: 1 1 100%;
   }
+}
+
+@media (max-width: 768px) {
+  .mobile-only { display: block; }
+  .desktop-only { display: none !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {

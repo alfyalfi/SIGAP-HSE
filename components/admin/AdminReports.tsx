@@ -21,9 +21,11 @@ import {
   getFindingExportCsvMatrix,
   getFindingExportHeaders,
   buildProfessionalXlsxBlob,
+  buildProfessionalJpgBlob,
   type ExportFilters,
   type ExportContext,
 } from "@/lib/report-export";
+import { MobileRecordCard } from "../MobileRecordCard";
 
 type ExportLog = {
   id: string;
@@ -126,122 +128,7 @@ function openPrintablePdf(title: string, bodyHtml: string) {
 }
 
 async function exportSummaryJpg(title: string, context: ExportContext) {
-  const canvas = document.createElement("canvas");
-  canvas.width = 1600;
-  canvas.height = 1200;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas tidak tersedia.");
-  const canvasCtx = ctx;
-
-  ctx.fillStyle = "#f4f5f9";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  function roundedRect(x: number, y: number, width: number, height: number, radius: number) {
-    const r = Math.min(radius, width / 2, height / 2);
-    canvasCtx.beginPath();
-    canvasCtx.moveTo(x + r, y);
-    canvasCtx.arcTo(x + width, y, x + width, y + height, r);
-    canvasCtx.arcTo(x + width, y + height, x, y + height, r);
-    canvasCtx.arcTo(x, y + height, x, y, r);
-    canvasCtx.arcTo(x, y, x + width, y, r);
-    canvasCtx.closePath();
-  }
-
-  const gradient = canvasCtx.createLinearGradient(0, 0, canvas.width, 0);
-  gradient.addColorStop(0, "#1f2937");
-  gradient.addColorStop(1, "#ff8a3d");
-  canvasCtx.fillStyle = gradient;
-  canvasCtx.fillRect(0, 0, canvas.width, 144);
-
-  canvasCtx.fillStyle = "#fff";
-  canvasCtx.font = "700 42px Arial";
-  canvasCtx.fillText(title, 56, 70);
-  canvasCtx.font = "400 18px Arial";
-  canvasCtx.fillText(`Diekspor: ${formatDateTime(new Date().toISOString())}`, 56, 104);
-
-  const cards = [
-    ["Total", String(context.summary.total)],
-    ["Open", String(context.summary.open)],
-    ["Progress", String(context.summary.progress)],
-    ["Closed", `${context.summary.closed} (${context.summary.closedRate}%)`],
-  ];
-
-  cards.forEach((card, idx) => {
-    const x = 56 + idx * 370;
-    const y = 184;
-    canvasCtx.fillStyle = "#ffffff";
-    canvasCtx.strokeStyle = "#e5e7eb";
-    canvasCtx.lineWidth = 2;
-    roundedRect(x, y, 330, 124, 20);
-    canvasCtx.fill();
-    canvasCtx.stroke();
-    canvasCtx.fillStyle = "#6b7280";
-    canvasCtx.font = "700 14px Arial";
-    canvasCtx.fillText(card[0], x + 22, y + 34);
-    canvasCtx.fillStyle = "#111827";
-    canvasCtx.font = "700 34px Arial";
-    canvasCtx.fillText(card[1], x + 22, y + 80);
-  });
-
-  canvasCtx.fillStyle = "#111827";
-  canvasCtx.font = "700 28px Arial";
-  canvasCtx.fillText("10 Temuan Terbaru", 56, 382);
-  canvasCtx.fillStyle = "#6b7280";
-  canvasCtx.font = "400 15px Arial";
-  canvasCtx.fillText("Ringkasan visual untuk presentasi kerja HSE", 56, 412);
-
-  const headers = ["Kode", "Tanggal", "Area", "Kategori", "PIC", "Status"];
-  const startY = 452;
-  const rowHeight = 58;
-  const colXs = [56, 240, 470, 700, 940, 1250];
-
-  canvasCtx.fillStyle = "#f3f4f6";
-  roundedRect(48, startY - 34, 1496, rowHeight * 11 + 18, 18);
-  canvasCtx.fill();
-
-  canvasCtx.fillStyle = "#6b7280";
-  canvasCtx.font = "700 14px Arial";
-  headers.forEach((header, idx) => canvasCtx.fillText(header, colXs[idx], startY));
-
-  const recentRows = context.rows.slice(0, 10).map((row) => [
-    row.code,
-    row.foundAtText,
-    row.area,
-    row.category,
-    row.pic,
-    row.statusLabel,
-  ]);
-
-  recentRows.forEach((row, rowIdx) => {
-    const y = startY + 44 + rowIdx * rowHeight;
-    if (rowIdx % 2 === 0) {
-      canvasCtx.fillStyle = "#ffffff";
-      canvasCtx.fillRect(56, y - 26, 1470, 46);
-    }
-    canvasCtx.fillStyle = "#111827";
-    canvasCtx.font = "700 14px Arial";
-    canvasCtx.fillText(String(row[0]), colXs[0], y);
-    canvasCtx.font = "400 14px Arial";
-    canvasCtx.fillText(String(row[1]).slice(0, 18), colXs[1], y);
-    canvasCtx.fillText(String(row[2]).slice(0, 18), colXs[2], y);
-    canvasCtx.fillText(String(row[3]).slice(0, 18), colXs[3], y);
-    canvasCtx.fillText(String(row[4]).slice(0, 18), colXs[4], y);
-    const badgeX = colXs[5];
-    const badge = String(row[5]);
-    canvasCtx.fillStyle =
-      badge === "closed" ? "#dcfce7" : badge === "progress" ? "#fef3c7" : badge === "rejected" ? "#fee2e2" : "#dbeafe";
-    roundedRect(badgeX, y - 18, 120, 28, 999);
-    canvasCtx.fill();
-    canvasCtx.fillStyle = "#111827";
-    canvasCtx.fillText(badge, badgeX + 18, y + 2);
-  });
-
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((value) => {
-      if (!value) reject(new Error("Gagal membuat JPG."));
-      else resolve(value);
-    }, "image/jpeg", 0.93);
-  });
+  const blob = await buildProfessionalJpgBlob(title, context);
   downloadBlobFile(blob, `${slugifyFileName(title)}-${new Date().toISOString().slice(0, 10)}.jpg`);
 }
 
@@ -566,87 +453,153 @@ export function AdminReports({ findings, profiles, reports }: AdminReportsProps)
             </div>
           </div>
           <div className="admin-table-panel" style={{ border: "none", boxShadow: "none" }}>
+            <div className="mobile-only admin-mobile-card-list">
+              {exportLog.length ? (
+                exportLog.map((row) => (
+                  <MobileRecordCard
+                    key={row.id}
+                    title={row.type}
+                    subtitle={row.time}
+                    badge={
+                      <span className={`mobile-record-chip ${row.status === "Berhasil" ? "success" : "danger"}`}>
+                        {row.status}
+                      </span>
+                    }
+                    sections={[
+                      {
+                        title: "Log ekspor",
+                        fields: [
+                          { label: "Waktu", value: row.time },
+                          { label: "Jenis", value: row.type },
+                          { label: "Status", value: row.status },
+                        ],
+                      },
+                    ]}
+                  />
+                ))
+              ) : (
+                <div className="admin-empty">Belum ada ekspor pada sesi ini.</div>
+              )}
+            </div>
+            <div className="desktop-only">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Waktu</th>
+                    <th>Jenis</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {exportLog.length ? (
+                    exportLog.map((row) => (
+                      <tr key={row.id} style={{ cursor: "default" }}>
+                        <td className="mono">{row.time}</td>
+                        <td>{row.type}</td>
+                        <td style={{ color: row.status === "Berhasil" ? "var(--accent-green)" : "var(--accent-red)" }}>
+                          {row.status}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={3} className="admin-empty">
+                        Belum ada ekspor pada sesi ini.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+        <div className="admin-panel">
+          <div className="admin-panel-head">
+            <div>
+              <div className="admin-panel-title">Monthly Report PIC</div>
+              <div className="admin-panel-sub">Daftar file laporan bulanan yang diunggah PIC</div>
+            </div>
+          </div>
+        <div className="admin-table-panel" style={{ border: "none", boxShadow: "none" }}>
+          <div className="mobile-only admin-mobile-card-list">
+            {sortedReports.length ? (
+              sortedReports.map((report) => (
+                <MobileRecordCard
+                  key={report.id}
+                  title={report.companyName}
+                  subtitle={formatDate(report.reportDate || report.reportMonth)}
+                  badge={<span className="mobile-record-chip info">Monthly Report</span>}
+                  sections={[
+                    {
+                      title: "Detail file",
+                      fields: [
+                        { label: "Periode", value: formatDate(report.reportDate || report.reportMonth) },
+                        { label: "File", value: report.fileName || "-" },
+                        { label: "Uploaded", value: formatDateTime(report.createdAt) },
+                      ],
+                    },
+                  ]}
+                  actions={
+                    <button
+                      type="button"
+                      className="admin-btn"
+                      disabled={downloadingId === report.id}
+                      onClick={() => handleDownloadMonthly(report)}
+                    >
+                      {downloadingId === report.id ? "Mengunduh..." : "Download"}
+                    </button>
+                  }
+                />
+              ))
+            ) : (
+              <div className="admin-empty">Belum ada monthly report yang diunggah PIC.</div>
+            )}
+          </div>
+          <div className="desktop-only">
             <table>
               <thead>
                 <tr>
-                  <th>Waktu</th>
-                  <th>Jenis</th>
-                  <th>Status</th>
+                  <th>Perusahaan</th>
+                  <th>Periode</th>
+                  <th>File</th>
+                  <th>Uploaded</th>
+                  <th>Aksi</th>
                 </tr>
               </thead>
               <tbody>
-                {exportLog.length ? (
-                  exportLog.map((row) => (
-                    <tr key={row.id} style={{ cursor: "default" }}>
-                      <td className="mono">{row.time}</td>
-                      <td>{row.type}</td>
-                      <td style={{ color: row.status === "Berhasil" ? "var(--accent-green)" : "var(--accent-red)" }}>
-                        {row.status}
+                {sortedReports.length ? (
+                  sortedReports.map((report) => (
+                    <tr key={report.id} style={{ cursor: "default" }}>
+                      <td>{report.companyName}</td>
+                      <td>{formatDate(report.reportDate || report.reportMonth)}</td>
+                      <td className="mono">{report.fileName || "-"}</td>
+                      <td className="mono">{formatDateTime(report.createdAt)}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="admin-btn admin-btn-sm"
+                          disabled={downloadingId === report.id}
+                          onClick={() => handleDownloadMonthly(report)}
+                        >
+                          {downloadingId === report.id ? "Mengunduh..." : "Download"}
+                        </button>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={3} className="admin-empty">
-                      Belum ada ekspor pada sesi ini.
+                    <td colSpan={5} className="admin-empty">
+                      Belum ada monthly report yang diunggah PIC.
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
-        </div>
-      </div>
-
-      <div className="admin-panel">
-        <div className="admin-panel-head">
-          <div>
-            <div className="admin-panel-title">Monthly Report PIC</div>
-            <div className="admin-panel-sub">Daftar file laporan bulanan yang diunggah PIC</div>
           </div>
         </div>
-        <div className="admin-table-panel" style={{ border: "none", boxShadow: "none" }}>
-          <table>
-            <thead>
-              <tr>
-                <th>Perusahaan</th>
-                <th>Periode</th>
-                <th>File</th>
-                <th>Uploaded</th>
-                <th>Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedReports.length ? (
-                sortedReports.map((report) => (
-                  <tr key={report.id} style={{ cursor: "default" }}>
-                    <td>{report.companyName}</td>
-                    <td>{formatDate(report.reportDate || report.reportMonth)}</td>
-                    <td className="mono">{report.fileName || "-"}</td>
-                    <td className="mono">{formatDateTime(report.createdAt)}</td>
-                    <td>
-                      <button
-                        type="button"
-                        className="admin-btn admin-btn-sm"
-                        disabled={downloadingId === report.id}
-                        onClick={() => handleDownloadMonthly(report)}
-                      >
-                        {downloadingId === report.id ? "Mengunduh..." : "Download"}
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5} className="admin-empty">
-                    Belum ada monthly report yang diunggah PIC.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
 
       <div className="admin-panel">
         <div className="admin-panel-head">

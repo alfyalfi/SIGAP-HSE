@@ -5,6 +5,7 @@ import { STATUS_LABELS, formatDateTime } from "@/lib/constants";
 import type { Finding, Profile } from "@/lib/queries";
 import type { AdminDataProps } from "./AdminDashboard";
 import { AdminStatusBadge } from "./AdminStatusBadge";
+import { MobileRecordCard } from "../MobileRecordCard";
 import { buildCsv, downloadTextFile } from "@/lib/export-utils";
 import {
   buildFindingExportRows,
@@ -28,11 +29,7 @@ function exportCsv(rows: Finding[], profiles: Profile[]) {
   downloadTextFile(csv, `sigap-temuan-${new Date().toISOString().slice(0, 10)}.csv`, "text/csv;charset=utf-8");
 }
 
-export function AdminFindingsList({
-  findings,
-  profiles,
-  onViewFinding,
-}: AdminFindingsListProps) {
+export function AdminFindingsList({ findings, profiles, onViewFinding }: AdminFindingsListProps) {
   const [search, setSearch] = useState("");
   const [area, setArea] = useState("");
   const [category, setCategory] = useState("");
@@ -41,10 +38,7 @@ export function AdminFindingsList({
   const [dateFrom, setDateFrom] = useState("");
   const [page, setPage] = useState(1);
 
-  const areas = useMemo(
-    () => [...new Set(findings.map((f) => f.areaName).filter(Boolean))].sort(),
-    [findings]
-  );
+  const areas = useMemo(() => [...new Set(findings.map((f) => f.areaName).filter(Boolean))].sort(), [findings]);
   const categories = useMemo(
     () => [...new Set(findings.map((f) => f.categoryName).filter(Boolean))].sort(),
     [findings]
@@ -136,31 +130,42 @@ export function AdminFindingsList({
         <select value={area} onChange={(e) => { setArea(e.target.value); setPage(1); }}>
           <option value="">Semua Area</option>
           {areas.map((a) => (
-            <option key={a} value={a}>{a}</option>
+            <option key={a} value={a}>
+              {a}
+            </option>
           ))}
         </select>
         <select value={company} onChange={(e) => { setCompany(e.target.value); setPage(1); }}>
           <option value="">Semua Perusahaan</option>
           {companies.map((c) => (
-            <option key={c} value={c}>{c}</option>
+            <option key={c} value={c}>
+              {c}
+            </option>
           ))}
         </select>
         <select value={category} onChange={(e) => { setCategory(e.target.value); setPage(1); }}>
           <option value="">Semua Kategori</option>
           {categories.map((c) => (
-            <option key={c} value={c}>{c}</option>
+            <option key={c} value={c}>
+              {c}
+            </option>
           ))}
         </select>
         <input
           type="date"
           value={dateFrom}
-          onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+          onChange={(e) => {
+            setDateFrom(e.target.value);
+            setPage(1);
+          }}
           title="Dari tanggal"
         />
         <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
           <option value="">Semua Status</option>
           {Object.entries(STATUS_LABELS).map(([val, label]) => (
-            <option key={val} value={val}>{label}</option>
+            <option key={val} value={val}>
+              {label}
+            </option>
           ))}
         </select>
         <span className="admin-filter-count">{filtered.length} temuan</span>
@@ -170,81 +175,103 @@ export function AdminFindingsList({
       </div>
 
       <div className="admin-table-panel">
-        <div className="admin-finding-cards">
+        <div className="mobile-only admin-mobile-card-list">
           {pageRows.length ? (
-            pageRows.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                className="admin-finding-card"
-                onClick={() => onViewFinding?.(f)}
-                title="Buka detail temuan"
-              >
-                <div className="admin-finding-card-top">
-                  <span className="mono admin-id-cell">{f.code}</span>
-                  <AdminStatusBadge status={f.status} />
-                </div>
-                <div className="admin-finding-card-title">{f.title || f.photoDescription || "-"}</div>
-                <div className="admin-finding-card-meta">
-                  {formatDateTime(f.foundDatetime || f.foundAt)} · {f.areaName}
-                </div>
-                <div className="admin-finding-card-meta">{profileName(profiles, f.createdBy)}</div>
-                <div className="admin-finding-card-meta">Buka detail untuk riwayat dan tindakan.</div>
-              </button>
-            ))
+            pageRows.map((f) => {
+              const before = f.photos.filter((p) => p.stage === "before").length;
+              const after = f.photos.filter((p) => p.stage === "after").length;
+              return (
+                <MobileRecordCard
+                  key={f.id}
+                  title={f.code}
+                  subtitle={f.title || f.photoDescription || "-"}
+                  badge={<AdminStatusBadge status={f.status} />}
+                  sections={[
+                    {
+                      title: "Informasi utama",
+                      fields: [
+                        { label: "Tanggal", value: formatDateTime(f.foundDatetime || f.foundAt) },
+                        { label: "Lokasi", value: f.areaName },
+                        { label: "Kategori", value: f.categoryName },
+                      ],
+                    },
+                  ]}
+                  detailsLabel="Lihat detail temuan"
+                  detailsSections={[
+                    {
+                      title: "Detail tambahan",
+                      fields: [
+                        { label: "Deskripsi", value: f.photoDescription || "-" },
+                        { label: "PIC", value: profileName(profiles, f.createdBy) },
+                        { label: "Foto", value: `${before || "-"} before / ${after || "-"} after` },
+                      ],
+                    },
+                  ]}
+                  actions={
+                    <button type="button" className="admin-btn" onClick={() => onViewFinding?.(f)}>
+                      Buka detail
+                    </button>
+                  }
+                />
+              );
+            })
           ) : (
             <div className="admin-empty">Tidak ada temuan yang sesuai filter.</div>
           )}
         </div>
-        <table className="admin-desktop-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Tanggal</th>
-              <th>Lokasi</th>
-              <th>Kategori</th>
-              <th>Deskripsi</th>
-              <th>PIC</th>
-              <th>Foto</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pageRows.length ? (
-              pageRows.map((f) => {
-                const before = f.photos.filter((p) => p.stage === "before").length;
-                const after = f.photos.filter((p) => p.stage === "after").length;
-                return (
-                  <tr key={f.id} onClick={() => onViewFinding?.(f)}>
-                    <td className="admin-id-cell">{f.code}</td>
-                    <td>{formatDateTime(f.foundDatetime || f.foundAt)}</td>
-                    <td>{f.areaName}</td>
-                    <td>{f.categoryName}</td>
-                    <td style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {f.photoDescription || "-"}
-                    </td>
-                    <td>{profileName(profiles, f.createdBy)}</td>
-                    <td>
-                      <div className="admin-photo-chip">
-                        <span title="Before">{before || "-"}</span>
-                        <span title="After">{after || "-"}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <AdminStatusBadge status={f.status} />
-                    </td>
-                  </tr>
-                );
-              })
-            ) : (
+
+        <div className="desktop-only">
+          <table className="admin-desktop-table">
+            <thead>
               <tr>
-                <td colSpan={8} className="admin-empty">
-                  Tidak ada temuan yang sesuai filter.
-                </td>
+                <th>ID</th>
+                <th>Tanggal</th>
+                <th>Lokasi</th>
+                <th>Kategori</th>
+                <th>Deskripsi</th>
+                <th>PIC</th>
+                <th>Foto</th>
+                <th>Status</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {pageRows.length ? (
+                pageRows.map((f) => {
+                  const before = f.photos.filter((p) => p.stage === "before").length;
+                  const after = f.photos.filter((p) => p.stage === "after").length;
+                  return (
+                    <tr key={f.id} onClick={() => onViewFinding?.(f)}>
+                      <td className="admin-id-cell">{f.code}</td>
+                      <td>{formatDateTime(f.foundDatetime || f.foundAt)}</td>
+                      <td>{f.areaName}</td>
+                      <td>{f.categoryName}</td>
+                      <td style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {f.photoDescription || "-"}
+                      </td>
+                      <td>{profileName(profiles, f.createdBy)}</td>
+                      <td>
+                        <div className="admin-photo-chip">
+                          <span title="Before">{before || "-"}</span>
+                          <span title="After">{after || "-"}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <AdminStatusBadge status={f.status} />
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={8} className="admin-empty">
+                    Tidak ada temuan yang sesuai filter.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
         <div className="admin-table-foot">
           <span>
             Menampilkan {pageRows.length ? (currentPage - 1) * PAGE_SIZE + 1 : 0}-

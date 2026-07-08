@@ -18,6 +18,7 @@ import {
 import { formatDateTime } from "@/lib/constants";
 import type { Finding, Profile } from "@/lib/queries";
 import type { AdminDataProps } from "./AdminDashboard";
+import { MobileRecordCard } from "../MobileRecordCard";
 
 Chart.register(
   CategoryScale,
@@ -430,45 +431,80 @@ export function AdminAnalytics({ findings, profiles }: AdminAnalyticsProps) {
             </div>
           </div>
           <div className="admin-table-panel" style={{ border: "none", boxShadow: "none" }}>
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>PIC</th>
-                  <th>Ditangani</th>
-                  <th>Closed</th>
-                  <th>Tingkat Selesai</th>
-                </tr>
-              </thead>
-              <tbody>
-                {picStats.length ? (
-                  picStats.map((p, i) => (
-                    <tr key={p.id} style={{ cursor: "default" }}>
-                      <td>
-                        <span className={`admin-rank-num${i < 3 ? " top" : ""}`}>{i + 1}</span>
-                      </td>
-                      <td>{p.name}</td>
-                      <td>{p.total}</td>
-                      <td>{p.closed}</td>
-                      <td>
-                        <div className="admin-bar-cell">
-                          <div className="admin-bar-track">
-                            <div className="admin-bar-fill" style={{ width: `${p.rate}%` }} />
+            <div className="mobile-only admin-mobile-card-list">
+              {picStats.length ? (
+                picStats.map((p, i) => (
+                <MobileRecordCard
+                  key={p.id}
+                  title={p.name}
+                  badge={<span className={`mobile-record-chip ${i < 3 ? "warning" : "neutral"}`}>#{i + 1}</span>}
+                  sections={[
+                    {
+                      title: "Ringkasan kinerja",
+                      fields: [
+                        { label: "Ditangani", value: p.total },
+                        { label: "Closed", value: p.closed },
+                        {
+                          label: "Tingkat selesai",
+                          value: (
+                            <div className="mobile-progress">
+                              <div className="mobile-progress-track">
+                                <div className="mobile-progress-fill" style={{ width: `${p.rate}%` }} />
+                              </div>
+                              <span>{p.rate}%</span>
+                            </div>
+                          ),
+                        },
+                      ],
+                    },
+                  ]}
+                />
+                ))
+              ) : (
+                <div className="admin-empty">Belum ada data kinerja PIC.</div>
+              )}
+            </div>
+            <div className="desktop-only">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>PIC</th>
+                    <th>Ditangani</th>
+                    <th>Closed</th>
+                    <th>Tingkat Selesai</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {picStats.length ? (
+                    picStats.map((p, i) => (
+                      <tr key={p.id} style={{ cursor: "default" }}>
+                        <td>
+                          <span className={`admin-rank-num${i < 3 ? " top" : ""}`}>{i + 1}</span>
+                        </td>
+                        <td>{p.name}</td>
+                        <td>{p.total}</td>
+                        <td>{p.closed}</td>
+                        <td>
+                          <div className="admin-bar-cell">
+                            <div className="admin-bar-track">
+                              <div className="admin-bar-fill" style={{ width: `${p.rate}%` }} />
+                            </div>
+                            <span className="mono">{p.rate}%</span>
                           </div>
-                          <span className="mono">{p.rate}%</span>
-                        </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="admin-empty">
+                        Belum ada data kinerja PIC.
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={5} className="admin-empty">
-                      Belum ada data kinerja PIC.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
