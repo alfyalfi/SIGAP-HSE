@@ -4,7 +4,11 @@ function SkeletonBlock({ className = "" }: { className?: string }) {
 
 export default function AdminLoading() {
   return (
-    <div className="admin-loading">
+    <div className="admin-loading" role="status" aria-live="polite">
+      <div className="page-loading">
+        <div className="page-loading-spinner" />
+        <div className="muted">Memuat workspace admin...</div>
+      </div>
       <div className="admin-loading-top">
         <SkeletonBlock className="skeleton-chip" />
         <SkeletonBlock className="skeleton-chip" />

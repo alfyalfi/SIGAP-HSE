@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { SigapLogo } from "./SigapLogo";
 import { ThemeToggle } from "./ThemeToggle";
 import { getGreeting } from "@/lib/constants";
+import { withTimeout } from "@/lib/async-utils";
 import type { Profile } from "@/lib/queries";
 
 const USER_NAV = [
@@ -23,7 +24,7 @@ export function AppHeader({ profile }: { profile: Profile }) {
     if (loggingOut) return;
     setLoggingOut(true);
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      await withTimeout(fetch("/api/auth/logout", { method: "POST" }), 10000, "Keluar");
       router.push("/login");
       router.refresh();
     } finally {

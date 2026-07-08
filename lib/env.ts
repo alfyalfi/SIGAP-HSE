@@ -26,6 +26,10 @@ export function getServerSecrets() {
   return { demoPassword, adminPin };
 }
 
+export function getSiteUrl() {
+  return process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+}
+
 export function isProtectedPath(pathname: string) {
   return (
     pathname.startsWith("/form") ||

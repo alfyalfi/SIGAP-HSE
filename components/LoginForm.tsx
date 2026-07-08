@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { COMPANIES, SIGAP_FULL_NAME } from "@/lib/constants";
 import { ADMIN_PIN_MAX, ADMIN_PIN_MIN, isValidAdminPin } from "@/lib/pin";
+import { withTimeout } from "@/lib/async-utils";
 import { AppCopyright } from "./AppCopyright";
 import { SigapLogo } from "./SigapLogo";
 
@@ -33,11 +34,15 @@ export function LoginForm() {
     setLoading(true);
     setStatus("Sedang masuk...");
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "user", companyId }),
-      });
+      const res = await withTimeout(
+        fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "user", companyId }),
+        }),
+        15000,
+        "Login user"
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Login gagal");
       router.push("/form");
@@ -58,11 +63,15 @@ export function LoginForm() {
     setLoading(true);
     setStatus("Memverifikasi PIN...");
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "admin", pin }),
-      });
+      const res = await withTimeout(
+        fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "admin", pin }),
+        }),
+        15000,
+        "Login admin"
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Login gagal");
       router.push("/admin/dashboard");

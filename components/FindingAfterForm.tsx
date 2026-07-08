@@ -6,6 +6,7 @@ import { Stepper } from "./Stepper";
 import { createClient } from "@/lib/supabase/client";
 import { submitProgressUpdate, uploadFindingPhoto, type Finding } from "@/lib/queries";
 import { compressImage } from "@/lib/compress";
+import { withTimeout } from "@/lib/async-utils";
 import {
   formatDateTime,
   getCategoryLabel,
@@ -51,12 +52,16 @@ export function FindingAfterForm({ finding }: { finding: Finding }) {
     if (!validate(1) || !afterPhoto) return;
     setLoading(true);
     try {
-      const compressed = await compressImage(afterPhoto);
-      await uploadFindingPhoto(supabase, finding.id, compressed, "after");
-      await submitProgressUpdate(supabase, finding.id, {
-        resolvedDatetime: new Date(resolvedDatetime).toISOString(),
-        afterDescription: afterDescription.trim(),
-      });
+      const compressed = await withTimeout(compressImage(afterPhoto), 20000, "Kompresi foto");
+      await withTimeout(uploadFindingPhoto(supabase, finding.id, compressed, "after"), 20000, "Upload foto");
+      await withTimeout(
+        submitProgressUpdate(supabase, finding.id, {
+          resolvedDatetime: new Date(resolvedDatetime).toISOString(),
+          afterDescription: afterDescription.trim(),
+        }),
+        15000,
+        "Menyimpan tindak lanjut"
+      );
       setShowConfirm(false);
       router.push("/dashboard");
       router.refresh();

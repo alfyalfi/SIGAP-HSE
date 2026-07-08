@@ -5,6 +5,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { uploadMonthlyReport, type MonthlyReport } from "@/lib/queries";
 import { formatDate, formatDateTime, toLocalDateValue } from "@/lib/constants";
+import { withTimeout } from "@/lib/async-utils";
 
 export function MonthlyReportForm({
   companyName,
@@ -28,7 +29,7 @@ export function MonthlyReportForm({
 
     setLoading(true);
     try {
-      await uploadMonthlyReport(supabase, file, reportDate, companyName);
+      await withTimeout(uploadMonthlyReport(supabase, file, reportDate, companyName), 30000, "Upload laporan");
       form.reset();
       setReportDate(toLocalDateValue());
       router.refresh();
