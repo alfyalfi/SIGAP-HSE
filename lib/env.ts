@@ -26,6 +26,16 @@ export function getServerSecrets() {
   return { demoPassword, adminPin };
 }
 
+export function getSupabaseServiceRoleKey() {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!serviceRoleKey || serviceRoleKey.includes("your-service-role-key")) {
+    return null;
+  }
+
+  return serviceRoleKey;
+}
+
 export function getSiteUrl() {
   return process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 }

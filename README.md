@@ -17,7 +17,7 @@
 ```bash
 npm install
 copy .env.local.example .env.local   # Windows
-# Isi 4 variabel env (lihat bawah)
+# Isi 5 variabel env (lihat bawah)
 
 npm run dev
 ```
@@ -34,8 +34,9 @@ Salin `.env.local.example` → `.env.local`:
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public | Anon key Supabase |
 | `SIGAP_DEMO_PASSWORD` | Server only | Password semua akun demo PIC/admin |
 | `SIGAP_ADMIN_PIN` | Server only | PIN login admin (**6–8 digit angka**) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server only | Dipakai heartbeat harian agar Supabase tetap aktif |
 
-> **Jangan** commit `.env.local`. Semua 4 variabel wajib diisi — tidak ada fallback default di production.
+> **Jangan** commit `.env.local`. Semua 5 variabel wajib diisi — tidak ada fallback default di production.
 
 Cara ubah PIN admin: [`PANDUAN_PIN_ADMIN.md`](./PANDUAN_PIN_ADMIN.md)
 
@@ -84,10 +85,25 @@ supabase/scripts/       Utilitas SQL (buat user)
 
 1. Push repo ke GitHub
 2. Import project di Vercel
-3. Set **4 environment variables** (sama seperti `.env.local`)
+3. Set **5 environment variables** (sama seperti `.env.local`)
 4. Deploy
 
 Error `MIDDLEWARE_INVOCATION_FAILED` = env Supabase belum diisi di Vercel.
+
+## Heartbeat Harian Supabase
+
+Project ini sekarang punya endpoint ringan:
+
+- `GET /api/cron/supabase-heartbeat`
+
+Di Vercel, endpoint itu dipanggil otomatis setiap hari pukul `17:00 UTC` melalui `vercel.json` supaya Supabase tetap dapat trafik minimal dan tidak cepat pause karena idle.
+
+Yang perlu diset di Vercel:
+
+1. `SUPABASE_SERVICE_ROLE_KEY`
+2. Deploy ulang project
+
+Kalau deploy bukan di Vercel, tetap bisa pakai endpoint yang sama dari scheduler eksternal lain.
 
 ## Dokumentasi
 
