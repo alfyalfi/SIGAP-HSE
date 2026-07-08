@@ -6,6 +6,11 @@ import type { Finding, Profile } from "@/lib/queries";
 import type { AdminDataProps } from "./AdminDashboard";
 import { AdminStatusBadge } from "./AdminStatusBadge";
 import { buildCsv, downloadTextFile } from "@/lib/export-utils";
+import {
+  buildFindingExportRows,
+  getFindingExportCsvMatrix,
+  getFindingExportHeaders,
+} from "@/lib/report-export";
 
 const PAGE_SIZE = 8;
 
@@ -18,19 +23,8 @@ function profileName(profiles: Profile[], id: string) {
 }
 
 function exportCsv(rows: Finding[], profiles: Profile[]) {
-  const csv = buildCsv([
-    ["Kode", "Tanggal", "Area", "Kategori", "Deskripsi", "PIC", "Perusahaan", "Status"],
-    ...rows.map((f) => [
-      f.code,
-      f.foundDatetime || f.foundAt,
-      f.areaName,
-      f.categoryName,
-      f.photoDescription,
-      profileName(profiles, f.createdBy),
-      f.companyName,
-      f.status,
-    ]),
-  ]);
+  const exportRows = buildFindingExportRows(rows, profiles);
+  const csv = buildCsv([getFindingExportHeaders(), ...getFindingExportCsvMatrix(exportRows)]);
   downloadTextFile(csv, `sigap-temuan-${new Date().toISOString().slice(0, 10)}.csv`, "text/csv;charset=utf-8");
 }
 

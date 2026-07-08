@@ -2,18 +2,28 @@
 
 import { useMemo, useState } from "react";
 import { formatDate, formatDateTime } from "@/lib/constants";
-import type { Finding, MonthlyReport, Profile } from "@/lib/queries";
+import type { Finding, MonthlyReport } from "@/lib/queries";
 import type { AdminDataProps } from "./AdminDashboard";
 import {
   buildCsv,
   buildDocxBlob,
-  buildXlsxBlob,
   downloadBlobFile,
   downloadTextFile,
   slugifyFileName,
   xmlEscape,
 } from "@/lib/export-utils";
 import { createClient } from "@/lib/supabase/client";
+import {
+  buildExportContext,
+  buildFindingExportRows,
+  buildExportSummary,
+  filterFindingsForExport,
+  getFindingExportCsvMatrix,
+  getFindingExportHeaders,
+  buildProfessionalXlsxBlob,
+  type ExportFilters,
+  type ExportContext,
+} from "@/lib/report-export";
 
 type ExportLog = {
   id: string;
@@ -27,15 +37,6 @@ type AdminReportsProps = AdminDataProps & {
 };
 
 type ExportFormat = "csv" | "xlsx" | "docx" | "pdf" | "jpg";
-
-type ExportFilters = {
-  status: string;
-  area: string;
-  category: string;
-  company: string;
-  dateFrom: string;
-  dateTo: string;
-};
 
 const DEFAULT_EXPORT_FILTERS: ExportFilters = {
   status: "",
@@ -59,10 +60,6 @@ const EXPORT_FORMATS: Array<{
   { id: "csv", name: "CSV", desc: "Format ringan untuk integrasi data.", tone: "neutral" },
 ];
 
-function profileName(profiles: Profile[], id: string) {
-  return profiles.find((p) => p.id === id)?.full_name || "PIC";
-}
-
 function escapeHtml(value: string) {
   return xmlEscape(value);
 }
@@ -79,42 +76,6 @@ function buildMonthlyPreview(findings: Finding[]) {
   const closed = monthFindings.filter((f) => f.status === "closed").length;
   const rejected = monthFindings.filter((f) => f.status === "rejected").length;
   return { monthLabel, total: monthFindings.length, open, progress, closed, rejected };
-}
-
-function filterFindings(findings: Finding[], filters: ExportFilters) {
-  return findings.filter((f) => {
-    const foundDate = (f.foundDatetime || f.foundAt).slice(0, 10);
-    if (filters.status && f.status !== filters.status) return false;
-    if (filters.area && f.areaName !== filters.area) return false;
-    if (filters.category && f.categoryName !== filters.category) return false;
-    if (filters.company && f.companyName !== filters.company) return false;
-    if (filters.dateFrom && foundDate < filters.dateFrom) return false;
-    if (filters.dateTo && foundDate > filters.dateTo) return false;
-    return true;
-  });
-}
-
-function buildExportRows(rows: Finding[], profiles: Profile[]) {
-  return rows.map((f) => [
-    f.code,
-    formatDateTime(f.foundDatetime || f.foundAt),
-    f.areaName,
-    f.categoryName,
-    profileName(profiles, f.createdBy),
-    f.companyName,
-    f.status,
-    f.photoDescription || "-",
-    f.afterDescription || "-",
-  ]);
-}
-
-function buildSummary(rows: Finding[]) {
-  const total = rows.length;
-  const open = rows.filter((f) => f.status === "open").length;
-  const progress = rows.filter((f) => f.status === "progress").length;
-  const closed = rows.filter((f) => f.status === "closed").length;
-  const rejected = rows.filter((f) => f.status === "rejected").length;
-  return { total, open, progress, closed, rejected };
 }
 
 function openPrintablePdf(title: string, bodyHtml: string) {
@@ -164,17 +125,13 @@ function openPrintablePdf(title: string, bodyHtml: string) {
   return true;
 }
 
-async function exportSummaryJpg(title: string, rows: Finding[], profiles: Profile[]) {
+async function exportSummaryJpg(title: string, context: ExportContext) {
   const canvas = document.createElement("canvas");
   canvas.width = 1600;
   canvas.height = 1200;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas tidak tersedia.");
   const canvasCtx = ctx;
-
-  const summary = buildSummary(rows);
-  const closedRate = summary.total ? Math.round((summary.closed / summary.total) * 100) : 0;
-  const recentRows = buildExportRows(rows.slice(0, 10), profiles);
 
   ctx.fillStyle = "#f4f5f9";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -203,10 +160,10 @@ async function exportSummaryJpg(title: string, rows: Finding[], profiles: Profil
   canvasCtx.fillText(`Diekspor: ${formatDateTime(new Date().toISOString())}`, 56, 104);
 
   const cards = [
-    ["Total", String(summary.total)],
-    ["Open", String(summary.open)],
-    ["Progress", String(summary.progress)],
-    ["Closed", `${summary.closed} (${closedRate}%)`],
+    ["Total", String(context.summary.total)],
+    ["Open", String(context.summary.open)],
+    ["Progress", String(context.summary.progress)],
+    ["Closed", `${context.summary.closed} (${context.summary.closedRate}%)`],
   ];
 
   cards.forEach((card, idx) => {
@@ -245,6 +202,15 @@ async function exportSummaryJpg(title: string, rows: Finding[], profiles: Profil
   canvasCtx.fillStyle = "#6b7280";
   canvasCtx.font = "700 14px Arial";
   headers.forEach((header, idx) => canvasCtx.fillText(header, colXs[idx], startY));
+
+  const recentRows = context.rows.slice(0, 10).map((row) => [
+    row.code,
+    row.foundAtText,
+    row.area,
+    row.category,
+    row.pic,
+    row.statusLabel,
+  ]);
 
   recentRows.forEach((row, rowIdx) => {
     const y = startY + 44 + rowIdx * rowHeight;
@@ -296,12 +262,16 @@ export function AdminReports({ findings, profiles, reports }: AdminReportsProps)
     [reports]
   );
 
-  const exportRows = useMemo(
-    () => filterFindings(findings, exportFilters),
+  const filteredFindings = useMemo(
+    () => filterFindingsForExport(findings, exportFilters),
     [findings, exportFilters]
   );
+  const exportRows = useMemo(
+    () => buildFindingExportRows(filteredFindings, profiles),
+    [filteredFindings, profiles]
+  );
 
-  const exportSummary = useMemo(() => buildSummary(exportRows), [exportRows]);
+  const exportSummary = useMemo(() => buildExportSummary(exportRows), [exportRows]);
 
   const categoryOptions = useMemo(
     () => [...new Set(findings.map((f) => f.categoryName).filter(Boolean))].sort(),
@@ -328,35 +298,38 @@ export function AdminReports({ findings, profiles, reports }: AdminReportsProps)
     ].slice(0, 10));
   }
 
-  function buildPdfBody(rows: Finding[]) {
-    const summary = buildSummary(rows);
-    const topRows = buildExportRows(rows.slice(0, 12), profiles);
-    const categoryMap = new Map<string, number>();
-    rows.forEach((row) => categoryMap.set(row.categoryName || "Lainnya", (categoryMap.get(row.categoryName || "Lainnya") || 0) + 1));
-    const categoryEntries = [...categoryMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
-    const maxCount = Math.max(1, ...categoryEntries.map(([, count]) => count));
+  function buildPdfBody(context: ExportContext) {
+    const topRows = context.rows.slice(0, 12).map((row) => [
+      row.code,
+      row.foundAtText,
+      row.area,
+      row.category,
+      row.pic,
+      row.statusLabel,
+    ]);
+    const maxCount = Math.max(1, ...context.categoryBreakdown.map((item) => item.count));
 
     return `
       <h1>SIGAP HSE - Laporan Export</h1>
-      <p class="muted">Format: ${xmlEscape(exportFormat.toUpperCase())} | Filtered rows: ${rows.length} | Diekspor: ${escapeHtml(
+      <p class="muted">Format: ${xmlEscape(exportFormat.toUpperCase())} | Filtered rows: ${context.rows.length} | Diekspor: ${escapeHtml(
         formatDateTime(new Date().toISOString())
       )}</p>
       <div class="grid">
-        <div class="box"><span>Total</span><strong>${summary.total}</strong></div>
-        <div class="box"><span>Open</span><strong>${summary.open}</strong></div>
-        <div class="box"><span>Progress</span><strong>${summary.progress}</strong></div>
-        <div class="box"><span>Closed</span><strong>${summary.closed}</strong></div>
+        <div class="box"><span>Total</span><strong>${context.summary.total}</strong></div>
+        <div class="box"><span>Open</span><strong>${context.summary.open}</strong></div>
+        <div class="box"><span>Progress</span><strong>${context.summary.progress}</strong></div>
+        <div class="box"><span>Closed</span><strong>${context.summary.closed}</strong></div>
       </div>
       <div class="section">
         <h2>Distribusi Kategori</h2>
         <div class="chart">
-          ${categoryEntries
+          ${context.categoryBreakdown
             .map(
-              ([name, count]) => `
+              (item) => `
                 <div class="bar-row">
-                  <span>${escapeHtml(name)}</span>
-                  <div class="bar-track"><div class="bar-fill" style="width:${Math.round((count / maxCount) * 100)}%"></div></div>
-                  <span>${count}</span>
+                  <span>${escapeHtml(item.name)}</span>
+                  <div class="bar-track"><div class="bar-fill" style="width:${Math.round((item.count / maxCount) * 100)}%"></div></div>
+                  <span>${item.count}</span>
                 </div>`
             )
             .join("")}
@@ -392,17 +365,18 @@ export function AdminReports({ findings, profiles, reports }: AdminReportsProps)
   async function handleExport() {
     setExporting(true);
     try {
-      const rows = exportRows;
-      const headers = ["Kode", "Tanggal", "Area", "Kategori", "PIC", "Perusahaan", "Status", "Deskripsi", "After"];
-      const exportData = buildExportRows(rows, profiles);
+      const rows = filteredFindings;
       const title = "SIGAP HSE Laporan";
       const dateStamp = new Date().toISOString().slice(0, 10);
       const baseName = `sigap-laporan-${dateStamp}-${exportFormat}`;
+      const exportContext = buildExportContext(rows, profiles, exportFilters, title);
+      const headers = getFindingExportHeaders();
+      const exportData = getFindingExportCsvMatrix(exportContext.rows);
 
       if (exportFormat === "csv") {
         downloadTextFile(buildCsv([headers, ...exportData]), `${baseName}.csv`, "text/csv;charset=utf-8");
       } else if (exportFormat === "xlsx") {
-        downloadBlobFile(buildXlsxBlob(headers, exportData, title), `${baseName}.xlsx`);
+        downloadBlobFile(await buildProfessionalXlsxBlob(exportContext), `${baseName}.xlsx`);
       } else if (exportFormat === "docx") {
         const docx = buildDocxBlob(
           title,
@@ -419,10 +393,10 @@ export function AdminReports({ findings, profiles, reports }: AdminReportsProps)
         );
         downloadBlobFile(docx, `${baseName}.docx`);
       } else if (exportFormat === "pdf") {
-        const opened = openPrintablePdf(title, buildPdfBody(rows));
+        const opened = openPrintablePdf(title, buildPdfBody(exportContext));
         if (!opened) window.print();
       } else if (exportFormat === "jpg") {
-        await exportSummaryJpg(title, rows, profiles);
+        await exportSummaryJpg(title, exportContext);
       }
 
       logExport(`${exportFormat.toUpperCase()} export`);

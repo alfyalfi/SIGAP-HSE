@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Stepper } from "./Stepper";
@@ -111,7 +112,14 @@ export function FindingAfterForm({ finding }: { finding: Finding }) {
               <div className="photo-preview">
                 <p className="section-title">Foto Before</p>
                 <div className="photo-preview-item">
-                  <img src={beforePhoto.publicUrl} alt="before" />
+                  <Image
+                    src={beforePhoto.publicUrl}
+                    alt="before"
+                    width={1200}
+                    height={900}
+                    unoptimized
+                    style={{ width: "100%", height: "auto" }}
+                  />
                 </div>
               </div>
             )}
@@ -135,7 +143,14 @@ export function FindingAfterForm({ finding }: { finding: Finding }) {
             {afterPreview && (
               <div className="photo-preview">
                 <div className="photo-preview-item">
-                  <img src={afterPreview} alt="after" />
+                  <Image
+                    src={afterPreview}
+                    alt="after"
+                    width={1200}
+                    height={900}
+                    unoptimized
+                    style={{ width: "100%", height: "auto" }}
+                  />
                   <div>{afterPhoto?.name}</div>
                 </div>
               </div>

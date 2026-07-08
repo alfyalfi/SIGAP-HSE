@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Stepper } from "./Stepper";
@@ -183,7 +184,14 @@ export function FindingForm({ companyName }: { companyName: string }) {
             {preview && (
               <div className="photo-preview">
                 <div className="photo-preview-item">
-                  <img src={preview} alt="preview" />
+                  <Image
+                    src={preview}
+                    alt="preview"
+                    width={1200}
+                    height={900}
+                    unoptimized
+                    style={{ width: "100%", height: "auto" }}
+                  />
                   <div>{beforePhoto?.name}</div>
                 </div>
               </div>
