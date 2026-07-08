@@ -15,9 +15,33 @@ export const metadata: Metadata = {
     template: "%s | SIGAP HSE",
   },
   description:
-    "Sistem Informasi Guna Audit dan Penyelesaian — pelaporan dan tindak lanjut temuan HSE.",
+    "Sistem Informasi Guna Audit dan Penyelesaian - pelaporan dan tindak lanjut temuan HSE.",
   applicationName: "SIGAP HSE",
+  keywords: ["SIGAP HSE", "HSE", "K3", "temuan", "pelaporan", "tindak lanjut", "audit", "safety"],
   robots: { index: false, follow: false },
+  openGraph: {
+    type: "website",
+    locale: "id_ID",
+    siteName: "SIGAP HSE",
+    title: "SIGAP HSE",
+    description:
+      "Sistem informasi untuk pelaporan, review, dan penyelesaian temuan HSE dalam satu alur yang rapi.",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "SIGAP HSE",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SIGAP HSE",
+    description:
+      "Sistem informasi untuk pelaporan, review, dan penyelesaian temuan HSE dalam satu alur yang rapi.",
+    images: ["/twitter-image"],
+  },
   icons: {
     icon: [{ url: "/logo.png", type: "image/png" }],
     apple: "/logo.png",
