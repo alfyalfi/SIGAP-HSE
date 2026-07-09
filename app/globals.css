@@ -566,7 +566,7 @@ tbody tr:last-child td { border-bottom: none; }
 .desktop-only { display: block; }
 
 .mobile-record-card-list {
-  display: grid;
+  display: none;
   gap: 12px;
 }
 
@@ -895,6 +895,49 @@ tbody tr:last-child td { border-bottom: none; }
 }
 .toast-error { border-color: var(--accent-red); color: var(--accent-red); }
 
+.install-app-banner {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 220;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(20, 21, 26, 0.92);
+  color: #fff;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+}
+
+.install-app-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.install-app-subtitle {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.76);
+  margin-top: 3px;
+  max-width: 44ch;
+  line-height: 1.5;
+}
+
+.install-app-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .install-app-banner {
+  background: rgba(28, 30, 38, 0.94);
+}
+
 .page-loading {
   display: flex;
   flex-direction: column;
@@ -982,7 +1025,10 @@ tbody tr:last-child td { border-bottom: none; }
 }
 
 /* ===== Responsive ===== */
-@media (max-width: 768px) {
+@media (max-width: 640px) {
+  .mobile-record-card-list {
+    display: grid;
+  }
   .app-header {
     padding: 12px 14px 14px;
     gap: 10px;
@@ -1123,9 +1169,20 @@ tbody tr:last-child td { border-bottom: none; }
   .header-actions .button-secondary {
     flex: 1 1 100%;
   }
+  .install-app-banner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .install-app-actions {
+    width: 100%;
+  }
+  .install-app-actions .admin-btn {
+    flex: 1;
+    justify-content: center;
+  }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 640px) {
   .mobile-only { display: block; }
   .desktop-only { display: none !important; }
 }

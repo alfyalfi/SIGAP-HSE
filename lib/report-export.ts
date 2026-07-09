@@ -107,8 +107,8 @@ export function buildFindingExportRows(findings: Finding[], profiles: Profile[])
   return findings.map((finding, index) => {
     const foundAt = toDate(finding.foundDatetime || finding.foundAt) || new Date();
     const resolvedAt = toDate(finding.resolvedDatetime);
-    const beforePhotos = finding.photos.filter((photo) => photo.stage === "before").length;
-    const afterPhotos = finding.photos.filter((photo) => photo.stage === "after").length;
+    const beforePhotos = finding.photoCounts?.before ?? finding.photos.filter((photo) => photo.stage === "before").length;
+    const afterPhotos = finding.photoCounts?.after ?? finding.photos.filter((photo) => photo.stage === "after").length;
     const statusLabel = DEFAULT_STATUS_LABELS[finding.status] || finding.status;
 
     return {

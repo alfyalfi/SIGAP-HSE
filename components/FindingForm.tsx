@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { createFinding, uploadFindingPhoto } from "@/lib/queries";
 import { compressImage } from "@/lib/compress";
 import { withTimeout } from "@/lib/async-utils";
+import { displayErrorMessage } from "@/lib/errors";
 import {
   FINDING_CATEGORIES,
   formatDateTime,
@@ -36,11 +37,17 @@ export function FindingForm({ companyName }: { companyName: string }) {
 
   function validate(s: number) {
     if (s === 1 && (!foundDatetime || !title.trim() || !areaText.trim() || !categoryText)) {
-      setToast("Lengkapi judul, area, dan kategori temuan.");
+      setToast(
+        displayErrorMessage(
+          null,
+          "Lengkapi judul, area, dan kategori temuan.",
+          "FORM"
+        )
+      );
       return false;
     }
     if (s === 2 && (!beforePhoto || !photoDescription.trim())) {
-      setToast("Foto dan deskripsi wajib diisi.");
+      setToast(displayErrorMessage(null, "Foto dan deskripsi wajib diisi.", "FORM"));
       return false;
     }
     setToast("");
@@ -69,7 +76,7 @@ export function FindingForm({ companyName }: { companyName: string }) {
       router.push("/dashboard");
       router.refresh();
     } catch (err) {
-      setToast(err instanceof Error ? err.message : "Gagal menyimpan");
+      setToast(displayErrorMessage(err, "Gagal menyimpan", "FORM"));
     } finally {
       setLoading(false);
     }
@@ -79,7 +86,7 @@ export function FindingForm({ companyName }: { companyName: string }) {
     <>
       <div className="page-intro">
         <h2>Form Temuan (Before)</h2>
-        <p className="muted">Laporkan temuan HSE baru dari lapangan — 3 langkah.</p>
+        <p className="muted">Laporkan temuan PIC baru dari lapangan — 3 Step.</p>
       </div>
 
       <Stepper steps={STEPS} current={step} />

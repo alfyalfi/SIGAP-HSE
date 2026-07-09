@@ -2,12 +2,26 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { ADMIN_EMAIL, getCompanyById } from "@/lib/constants";
 import { getServerSecrets, getSupabaseEnv } from "@/lib/env";
+import { toErrorBody } from "@/lib/errors";
 import { isValidAdminPin } from "@/lib/pin";
+
+function isUndefinedColumnError(error: unknown) {
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      "code" in error &&
+      (error as { code?: string }).code === "42703"
+  );
+}
 
 export async function POST(request: Request) {
   if (!getSupabaseEnv()) {
     return NextResponse.json(
-      { error: "NEXT_PUBLIC_SUPABASE_URL / ANON_KEY belum dikonfigurasi di server." },
+      toErrorBody(
+        null,
+        "NEXT_PUBLIC_SUPABASE_URL / ANON_KEY belum dikonfigurasi di server.",
+        "AUTH"
+      ),
       { status: 500 }
     );
   }
@@ -15,7 +29,11 @@ export async function POST(request: Request) {
   const secrets = getServerSecrets();
   if (!secrets) {
     return NextResponse.json(
-      { error: "SIGAP_DEMO_PASSWORD / SIGAP_ADMIN_PIN belum dikonfigurasi di server." },
+      toErrorBody(
+        null,
+        "SIGAP_DEMO_PASSWORD / SIGAP_ADMIN_PIN belum dikonfigurasi di server.",
+        "AUTH"
+      ),
       { status: 500 }
     );
   }
@@ -31,19 +49,21 @@ export async function POST(request: Request) {
 
   if (type === "admin") {
     if (!pin || !isValidAdminPin(pin)) {
-      return NextResponse.json(
-        { error: "PIN harus 6–8 digit angka." },
-        { status: 400 }
-      );
+      return NextResponse.json(toErrorBody(null, "PIN harus 6-8 digit angka.", "AUTH"), {
+        status: 400,
+      });
     }
     if (pin !== secrets.adminPin) {
-      return NextResponse.json({ error: "PIN salah." }, { status: 401 });
+      return NextResponse.json(toErrorBody(null, "PIN salah.", "AUTH"), { status: 401 });
     }
     email = ADMIN_EMAIL;
   } else {
     const company = getCompanyById(companyId || "");
     if (!company) {
-      return NextResponse.json({ error: "Perusahaan tidak ditemukan." }, { status: 400 });
+      return NextResponse.json(
+        toErrorBody(null, "Perusahaan tidak ditemukan.", "AUTH"),
+        { status: 400 }
+      );
     }
     email = company.email;
   }
@@ -55,18 +75,29 @@ export async function POST(request: Request) {
   });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 401 });
+    return NextResponse.json(toErrorBody(error, error.message, "AUTH"), { status: 401 });
   }
 
   if (type !== "admin" && authData.user) {
-    const { data: profile } = await supabase
+    let profileQuery = await supabase
       .from("profiles")
       .select("is_active")
       .eq("id", authData.user.id)
       .maybeSingle();
-    if (profile?.is_active === false) {
+    if (isUndefinedColumnError(profileQuery.error)) {
+      profileQuery = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", authData.user.id)
+        .maybeSingle();
+    }
+    const { data: profile } = profileQuery;
+    if (profile && "is_active" in profile && profile.is_active === false) {
       await supabase.auth.signOut();
-      return NextResponse.json({ error: "Akun PIC tidak aktif." }, { status: 403 });
+      return NextResponse.json(
+        toErrorBody(null, "Akun PIC tidak aktif.", "AUTH"),
+        { status: 403 }
+      );
     }
   }
 

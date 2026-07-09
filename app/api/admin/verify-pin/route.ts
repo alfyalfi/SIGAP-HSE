@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { deleteFinding, getCurrentProfile } from "@/lib/queries";
+import { getCurrentProfile } from "@/lib/queries";
 import { getServerSecrets, getSupabaseEnv } from "@/lib/env";
 import { toErrorBody } from "@/lib/errors";
 import { isValidAdminPin } from "@/lib/pin";
@@ -20,24 +20,12 @@ export async function POST(request: Request) {
     );
   }
 
-  const body = await request.json();
-  const { findingId, pin } = body as { findingId?: string; pin?: string };
-
-  if (!findingId) {
-    return NextResponse.json(toErrorBody(null, "ID temuan wajib diisi.", "ADMIN"), {
-      status: 400,
-    });
-  }
-
-  if (!pin || !isValidAdminPin(pin)) {
+  const body = (await request.json()) as { pin?: string };
+  if (!body.pin || !isValidAdminPin(body.pin)) {
     return NextResponse.json(
       toErrorBody(null, "PIN harus 6-8 digit angka.", "ADMIN"),
       { status: 400 }
     );
-  }
-
-  if (pin !== secrets.adminPin) {
-    return NextResponse.json(toErrorBody(null, "PIN salah.", "ADMIN"), { status: 401 });
   }
 
   const supabase = await createClient();
@@ -46,12 +34,9 @@ export async function POST(request: Request) {
     return NextResponse.json(toErrorBody(null, "Akses ditolak.", "ADMIN"), { status: 403 });
   }
 
-  try {
-    const data = await deleteFinding(supabase, findingId);
-    return NextResponse.json({ ok: true, code: data.code });
-  } catch (err) {
-    return NextResponse.json(toErrorBody(err, "Gagal menghapus temuan.", "ADMIN"), {
-      status: 500,
-    });
+  if (body.pin !== secrets.adminPin) {
+    return NextResponse.json(toErrorBody(null, "PIN salah.", "ADMIN"), { status: 401 });
   }
+
+  return NextResponse.json({ ok: true });
 }

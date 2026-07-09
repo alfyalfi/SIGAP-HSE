@@ -1,17 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
+import type { KeyboardEvent } from "react";
 import { STATUS_LABELS, formatDateTime } from "@/lib/constants";
 import type { Finding, Profile } from "@/lib/queries";
 import type { AdminDataProps } from "./AdminDashboard";
 import { AdminStatusBadge } from "./AdminStatusBadge";
 import { MobileRecordCard } from "../MobileRecordCard";
-import { buildCsv, downloadTextFile } from "@/lib/export-utils";
-import {
-  buildFindingExportRows,
-  getFindingExportCsvMatrix,
-  getFindingExportHeaders,
-} from "@/lib/report-export";
+import { downloadBlobFile, slugifyFileName } from "@/lib/export-utils";
+import { buildExportContext, buildProfessionalXlsxBlob } from "@/lib/report-export";
 
 const PAGE_SIZE = 8;
 
@@ -23,10 +20,14 @@ function profileName(profiles: Profile[], id: string) {
   return profiles.find((p) => p.id === id)?.full_name || "PIC";
 }
 
-function exportCsv(rows: Finding[], profiles: Profile[]) {
-  const exportRows = buildFindingExportRows(rows, profiles);
-  const csv = buildCsv([getFindingExportHeaders(), ...getFindingExportCsvMatrix(exportRows)]);
-  downloadTextFile(csv, `sigap-temuan-${new Date().toISOString().slice(0, 10)}.csv`, "text/csv;charset=utf-8");
+async function exportXlsx(
+  rows: Finding[],
+  profiles: Profile[],
+  filters: { status: string; area: string; category: string; company: string; dateFrom: string; dateTo: string }
+) {
+  const context = buildExportContext(rows, profiles, filters, "SIGAP HSE Daftar Temuan");
+  const blob = await buildProfessionalXlsxBlob(context);
+  downloadBlobFile(blob, `${slugifyFileName(`sigap-temuan-${new Date().toISOString().slice(0, 10)}`)}.xlsx`);
 }
 
 export function AdminFindingsList({ findings, profiles, onViewFinding }: AdminFindingsListProps) {
@@ -36,7 +37,9 @@ export function AdminFindingsList({ findings, profiles, onViewFinding }: AdminFi
   const [status, setStatus] = useState("");
   const [company, setCompany] = useState("");
   const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
+  const deferredSearch = useDeferredValue(search);
 
   const areas = useMemo(() => [...new Set(findings.map((f) => f.areaName).filter(Boolean))].sort(), [findings]);
   const categories = useMemo(
@@ -49,13 +52,14 @@ export function AdminFindingsList({ findings, profiles, onViewFinding }: AdminFi
   );
 
   const filtered = useMemo(() => {
-    const q = search.toLowerCase();
+    const q = deferredSearch.toLowerCase();
     return findings.filter((f) => {
       if (area && f.areaName !== area) return false;
       if (category && f.categoryName !== category) return false;
       if (status && f.status !== status) return false;
       if (company && f.companyName !== company) return false;
       if (dateFrom && (f.foundDatetime || f.foundAt).slice(0, 10) < dateFrom) return false;
+      if (dateTo && (f.foundDatetime || f.foundAt).slice(0, 10) > dateTo) return false;
       if (q) {
         const hay = [
           f.code,
@@ -71,11 +75,12 @@ export function AdminFindingsList({ findings, profiles, onViewFinding }: AdminFi
       }
       return true;
     });
-  }, [findings, search, area, category, status, company, dateFrom, profiles]);
+  }, [findings, deferredSearch, area, category, status, company, dateFrom, dateTo, profiles]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const pageRows = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const exportReady = Boolean(dateFrom && dateTo);
 
   function resetFilters() {
     setSearch("");
@@ -84,7 +89,21 @@ export function AdminFindingsList({ findings, profiles, onViewFinding }: AdminFi
     setStatus("");
     setCompany("");
     setDateFrom("");
+    setDateTo("");
     setPage(1);
+  }
+
+  function openRowFinding(finding: Finding) {
+    onViewFinding?.(finding);
+  }
+
+  function handleRowKeyDown(
+    event: KeyboardEvent<HTMLTableRowElement>,
+    finding: Finding
+  ) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    openRowFinding(finding);
   }
 
   return (
@@ -106,13 +125,18 @@ export function AdminFindingsList({ findings, profiles, onViewFinding }: AdminFi
           />
         </div>
         <div className="admin-topbar-actions">
-          <button type="button" className="admin-btn admin-btn-sm" onClick={() => exportCsv(filtered, profiles)}>
+          <button
+            type="button"
+            className="admin-btn admin-btn-sm"
+            disabled={!exportReady}
+            onClick={async () => exportXlsx(filtered, profiles, { status, area, category, company, dateFrom, dateTo })}
+          >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M12 3v12" />
               <path d="m7 10 5 5 5-5" />
               <path d="M5 21h14" />
             </svg>
-            CSV
+            Excel
           </button>
           <button type="button" className="admin-btn admin-btn-sm" onClick={() => window.print()}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -160,6 +184,15 @@ export function AdminFindingsList({ findings, profiles, onViewFinding }: AdminFi
           }}
           title="Dari tanggal"
         />
+        <input
+          type="date"
+          value={dateTo}
+          onChange={(e) => {
+            setDateTo(e.target.value);
+            setPage(1);
+          }}
+          title="Sampai tanggal"
+        />
         <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
           <option value="">Semua Status</option>
           {Object.entries(STATUS_LABELS).map(([val, label]) => (
@@ -173,13 +206,18 @@ export function AdminFindingsList({ findings, profiles, onViewFinding }: AdminFi
           Reset filter
         </button>
       </div>
+      {!exportReady && (
+        <p className="muted" style={{ marginBottom: 12, fontSize: 12 }}>
+          Pilih rentang tanggal dari dan sampai sebelum ekspor Excel.
+        </p>
+      )}
 
       <div className="admin-table-panel">
         <div className="mobile-only admin-mobile-card-list">
           {pageRows.length ? (
             pageRows.map((f) => {
-              const before = f.photos.filter((p) => p.stage === "before").length;
-              const after = f.photos.filter((p) => p.stage === "after").length;
+              const before = f.photoCounts?.before ?? f.photos.filter((p) => p.stage === "before").length;
+              const after = f.photoCounts?.after ?? f.photos.filter((p) => p.stage === "after").length;
               return (
                 <MobileRecordCard
                   key={f.id}
@@ -237,10 +275,18 @@ export function AdminFindingsList({ findings, profiles, onViewFinding }: AdminFi
             <tbody>
               {pageRows.length ? (
                 pageRows.map((f) => {
-                  const before = f.photos.filter((p) => p.stage === "before").length;
-                  const after = f.photos.filter((p) => p.stage === "after").length;
+                  const before = f.photoCounts?.before ?? f.photos.filter((p) => p.stage === "before").length;
+                  const after = f.photoCounts?.after ?? f.photos.filter((p) => p.stage === "after").length;
                   return (
-                    <tr key={f.id} onClick={() => onViewFinding?.(f)}>
+                    <tr
+                      key={f.id}
+                      className={onViewFinding ? "row-clickable" : undefined}
+                      tabIndex={onViewFinding ? 0 : undefined}
+                      role={onViewFinding ? "button" : undefined}
+                      title={onViewFinding ? "Buka detail temuan" : undefined}
+                      onClick={() => openRowFinding(f)}
+                      onKeyDown={(event) => handleRowKeyDown(event, f)}
+                    >
                       <td className="admin-id-cell">{f.code}</td>
                       <td>{formatDateTime(f.foundDatetime || f.foundAt)}</td>
                       <td>{f.areaName}</td>

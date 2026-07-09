@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { submitProgressUpdate, uploadFindingPhoto, type Finding } from "@/lib/queries";
 import { compressImage } from "@/lib/compress";
 import { withTimeout } from "@/lib/async-utils";
+import { displayErrorMessage } from "@/lib/errors";
 import {
   formatDateTime,
   getCategoryLabel,
@@ -36,13 +37,19 @@ export function FindingAfterForm({ finding }: { finding: Finding }) {
 
   function validate(s: number) {
     if (s === 1 && (!afterPhoto || !afterDescription.trim())) {
-      setToast("Foto after dan deskripsi wajib diisi.");
+      setToast(displayErrorMessage(null, "Foto after dan deskripsi wajib diisi.", "FORM"));
       return false;
     }
     const resolvedDt = new Date(resolvedDatetime);
     const foundDt = new Date(finding.foundDatetime || finding.foundAt);
     if (resolvedDt < foundDt) {
-      setToast("Tanggal penyelesaian tidak boleh sebelum tanggal temuan.");
+      setToast(
+        displayErrorMessage(
+          null,
+          "Tanggal penyelesaian tidak boleh sebelum tanggal temuan.",
+          "FORM"
+        )
+      );
       return false;
     }
     setToast("");
@@ -67,7 +74,7 @@ export function FindingAfterForm({ finding }: { finding: Finding }) {
       router.push("/dashboard");
       router.refresh();
     } catch (err) {
-      setToast(err instanceof Error ? err.message : "Gagal menyimpan");
+      setToast(displayErrorMessage(err, "Gagal menyimpan", "FORM"));
     } finally {
       setLoading(false);
     }

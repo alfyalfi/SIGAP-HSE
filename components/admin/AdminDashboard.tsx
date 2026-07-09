@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import type { KeyboardEvent } from "react";
 import {
   Chart,
   ArcElement,
@@ -140,6 +141,7 @@ export function AdminDashboard({
 
   const searchQuery = controlledSearch ?? localSearch;
   const statusFilter = controlledFilter !== undefined ? controlledFilter : localFilter;
+  const deferredSearchQuery = useDeferredValue(searchQuery);
 
   const trendRef = useRef<HTMLCanvasElement>(null);
   const catRef = useRef<HTMLCanvasElement>(null);
@@ -168,10 +170,10 @@ export function AdminDashboard({
   const recentFindings = useMemo(
     () =>
       [...findings]
-        .filter((f) => matchesSearch(f, searchQuery, profiles))
+        .filter((f) => matchesSearch(f, deferredSearchQuery, profiles))
         .filter((f) => !statusFilter || f.status === statusFilter)
         .slice(0, 6),
-    [findings, searchQuery, profiles, statusFilter]
+    [findings, deferredSearchQuery, profiles, statusFilter]
   );
 
   const activities = useMemo(() => {
@@ -373,6 +375,19 @@ export function AdminDashboard({
     },
   ];
 
+  function openRowFinding(finding: Finding) {
+    onViewFinding?.(finding);
+  }
+
+  function handleRowKeyDown(
+    event: KeyboardEvent<HTMLTableRowElement>,
+    finding: Finding
+  ) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    openRowFinding(finding);
+  }
+
   return (
     <>
       <div className="admin-kpi-row">
@@ -517,7 +532,15 @@ export function AdminDashboard({
                 <tbody>
                   {recentFindings.length ? (
                     recentFindings.map((f) => (
-                      <tr key={f.id} onClick={() => onViewFinding?.(f)}>
+                      <tr
+                        key={f.id}
+                        className={onViewFinding ? "row-clickable" : undefined}
+                        tabIndex={onViewFinding ? 0 : undefined}
+                        role={onViewFinding ? "button" : undefined}
+                        title={onViewFinding ? "Buka detail temuan" : undefined}
+                        onClick={() => openRowFinding(f)}
+                        onKeyDown={(event) => handleRowKeyDown(event, f)}
+                      >
                         <td className="admin-id-cell">{f.code}</td>
                         <td>{f.areaName}</td>
                         <td>{f.categoryName}</td>

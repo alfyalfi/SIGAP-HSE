@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { COMPANIES, SIGAP_FULL_NAME } from "@/lib/constants";
 import { ADMIN_PIN_MAX, ADMIN_PIN_MIN, isValidAdminPin } from "@/lib/pin";
 import { withTimeout } from "@/lib/async-utils";
+import { displayErrorMessage } from "@/lib/errors";
 import { AppCopyright } from "./AppCopyright";
 import { SigapLogo } from "./SigapLogo";
 
@@ -20,11 +21,23 @@ export function LoginForm() {
   useEffect(() => {
     const error = searchParams.get("error");
     if (error === "config") {
-      setStatus("Environment Supabase belum dikonfigurasi. Isi NEXT_PUBLIC_SUPABASE_URL dan NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+      setStatus(
+        displayErrorMessage(
+          null,
+          "Environment Supabase belum dikonfigurasi. Isi NEXT_PUBLIC_SUPABASE_URL dan NEXT_PUBLIC_SUPABASE_ANON_KEY.",
+          "AUTH"
+        )
+      );
     } else if (error === "session") {
-      setStatus("Sesi gagal dimuat. Silakan login kembali.");
+      setStatus(displayErrorMessage(null, "Sesi gagal dimuat. Silakan login kembali.", "AUTH"));
     } else if (error === "secrets") {
-      setStatus("Server secrets belum dikonfigurasi. Isi SIGAP_DEMO_PASSWORD dan SIGAP_ADMIN_PIN.");
+      setStatus(
+        displayErrorMessage(
+          null,
+          "Server secrets belum dikonfigurasi. Isi SIGAP_DEMO_PASSWORD dan SIGAP_ADMIN_PIN.",
+          "AUTH"
+        )
+      );
     }
   }, [searchParams]);
 
@@ -44,11 +57,11 @@ export function LoginForm() {
         "Login user"
       );
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Login gagal");
+      if (!res.ok) throw new Error(data.error || displayErrorMessage(null, "Login gagal", "AUTH"));
       router.push("/form");
       router.refresh();
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : "Login gagal");
+      setStatus(displayErrorMessage(err, "Login gagal", "AUTH"));
     } finally {
       setLoading(false);
     }
@@ -57,7 +70,13 @@ export function LoginForm() {
   async function handleAdminLogin(e: React.FormEvent) {
     e.preventDefault();
     if (!isValidAdminPin(pin)) {
-      setStatus(`PIN harus ${ADMIN_PIN_MIN}-${ADMIN_PIN_MAX} digit angka.`);
+      setStatus(
+        displayErrorMessage(
+          null,
+          `PIN harus ${ADMIN_PIN_MIN}-${ADMIN_PIN_MAX} digit angka.`,
+          "AUTH"
+        )
+      );
       return;
     }
     setLoading(true);
@@ -73,11 +92,11 @@ export function LoginForm() {
         "Login admin"
       );
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Login gagal");
+      if (!res.ok) throw new Error(data.error || displayErrorMessage(null, "Login gagal", "AUTH"));
       router.push("/admin/dashboard");
       router.refresh();
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : "Login gagal");
+      setStatus(displayErrorMessage(err, "Login gagal", "AUTH"));
     } finally {
       setLoading(false);
     }

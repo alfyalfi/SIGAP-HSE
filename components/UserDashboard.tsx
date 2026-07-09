@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { StatusBadge } from "./StatusBadge";
 import { MobileRecordCard } from "./MobileRecordCard";
@@ -34,6 +34,9 @@ export function UserDashboard({ findings }: { findings: Finding[] }) {
   const [dateFrom, setDateFrom] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const deferredStatusFilter = useDeferredValue(statusFilter);
+  const deferredAreaFilter = useDeferredValue(areaFilter);
+  const deferredDateFrom = useDeferredValue(dateFrom);
 
   const areas = useMemo(
     () => [...new Set(findings.map((f) => f.areaName).filter((a) => a && a !== "-"))].sort(),
@@ -42,12 +45,12 @@ export function UserDashboard({ findings }: { findings: Finding[] }) {
 
   const filtered = useMemo(() => {
     return findings.filter((f) => {
-      if (statusFilter && f.status !== statusFilter) return false;
-      if (areaFilter && f.areaName !== areaFilter) return false;
-      if (dateFrom && (f.foundDatetime || f.foundAt).slice(0, 10) < dateFrom) return false;
+      if (deferredStatusFilter && f.status !== deferredStatusFilter) return false;
+      if (deferredAreaFilter && f.areaName !== deferredAreaFilter) return false;
+      if (deferredDateFrom && (f.foundDatetime || f.foundAt).slice(0, 10) < deferredDateFrom) return false;
       return true;
     });
-  }, [findings, statusFilter, areaFilter, dateFrom]);
+  }, [findings, deferredStatusFilter, deferredAreaFilter, deferredDateFrom]);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -179,10 +182,8 @@ export function UserDashboard({ findings }: { findings: Finding[] }) {
             <tbody>
               {filtered.length ? (
                 filtered.map((f) => (
-                  <tr
-                    key={f.id}
-                    className={canUpdate(f) ? "row-clickable" : ""}
-                    onClick={() => openFinding(f)}
+                <tr
+                  key={f.id}
                   >
                     <td className="mono">{f.code}</td>
                     <td>{f.title}</td>

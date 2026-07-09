@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ADMIN_PIN_MAX, ADMIN_PIN_MIN, isValidAdminPin } from "@/lib/pin";
+import { displayErrorMessage } from "@/lib/errors";
 
 type AdminPinModalProps = {
   open: boolean;
@@ -30,11 +31,22 @@ export function AdminPinModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!isValidAdminPin(pin)) {
-      setError(`PIN harus ${ADMIN_PIN_MIN}-${ADMIN_PIN_MAX} digit angka.`);
+      setError(
+        displayErrorMessage(
+          null,
+          `PIN harus ${ADMIN_PIN_MIN}-${ADMIN_PIN_MAX} digit angka.`,
+          "ADMIN"
+        )
+      );
       return;
     }
     setError("");
-    await onConfirm(pin);
+    try {
+      await onConfirm(pin);
+    } catch (err) {
+      setError(displayErrorMessage(err, "PIN gagal diverifikasi.", "ADMIN"));
+      throw err;
+    }
   }
 
   function handleClose() {

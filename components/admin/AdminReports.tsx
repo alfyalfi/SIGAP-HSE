@@ -26,6 +26,8 @@ import {
   type ExportContext,
 } from "@/lib/report-export";
 import { MobileRecordCard } from "../MobileRecordCard";
+import { displayErrorMessage } from "@/lib/errors";
+import { AdminPinModal } from "./AdminPinModal";
 
 type ExportLog = {
   id: string;
@@ -36,6 +38,7 @@ type ExportLog = {
 
 type AdminReportsProps = AdminDataProps & {
   reports: MonthlyReport[];
+  onDeleteReports?: (reportIds: string[], pin: string) => void | Promise<void>;
 };
 
 type ExportFormat = "csv" | "xlsx" | "docx" | "pdf" | "jpg";
@@ -132,13 +135,16 @@ async function exportSummaryJpg(title: string, context: ExportContext) {
   downloadBlobFile(blob, `${slugifyFileName(title)}-${new Date().toISOString().slice(0, 10)}.jpg`);
 }
 
-export function AdminReports({ findings, profiles, reports }: AdminReportsProps) {
+export function AdminReports({ findings, profiles, reports, onDeleteReports }: AdminReportsProps) {
   const supabase = createClient();
   const [exportLog, setExportLog] = useState<ExportLog[]>([]);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [exportFormat, setExportFormat] = useState<ExportFormat>("xlsx");
   const [exportFilters, setExportFilters] = useState<ExportFilters>(DEFAULT_EXPORT_FILTERS);
   const [exporting, setExporting] = useState(false);
+  const [selectedReportIds, setSelectedReportIds] = useState<string[]>([]);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deletingReports, setDeletingReports] = useState(false);
 
   const monthlyPreview = useMemo(() => buildMonthlyPreview(findings), [findings]);
   const sortedReports = useMemo(
@@ -172,6 +178,36 @@ export function AdminReports({ findings, profiles, reports }: AdminReportsProps)
     () => [...new Set(findings.map((f) => f.companyName).filter(Boolean))].sort(),
     [findings]
   );
+  const isExportRangeReady = Boolean(exportFilters.dateFrom && exportFilters.dateTo);
+  const selectedReportSet = useMemo(() => new Set(selectedReportIds), [selectedReportIds]);
+  const allReportsSelected = sortedReports.length > 0 && selectedReportIds.length === sortedReports.length;
+  const selectedReportCount = selectedReportIds.length;
+
+  function toggleReportSelection(reportId: string) {
+    setSelectedReportIds((prev) =>
+      prev.includes(reportId) ? prev.filter((id) => id !== reportId) : [...prev, reportId]
+    );
+  }
+
+  function toggleAllReports() {
+    setSelectedReportIds((prev) =>
+      prev.length === sortedReports.length ? [] : sortedReports.map((report) => report.id)
+    );
+  }
+
+  async function confirmDeleteReports(pin: string) {
+    if (!onDeleteReports || selectedReportIds.length === 0) return;
+    setDeletingReports(true);
+    try {
+      await onDeleteReports(selectedReportIds, pin);
+      setSelectedReportIds([]);
+      setDeleteModalOpen(false);
+    } catch (error) {
+      throw new Error(displayErrorMessage(error, "Gagal menghapus laporan.", "REPORT"));
+    } finally {
+      setDeletingReports(false);
+    }
+  }
 
   function logExport(type: string, status = "Berhasil") {
     setExportLog((prev) => [
@@ -250,6 +286,10 @@ export function AdminReports({ findings, profiles, reports }: AdminReportsProps)
   }
 
   async function handleExport() {
+    if (!isExportRangeReady) {
+      logExport("Ekspor", "Gagal");
+      return;
+    }
     setExporting(true);
     try {
       const rows = filteredFindings;
@@ -288,7 +328,7 @@ export function AdminReports({ findings, profiles, reports }: AdminReportsProps)
 
       logExport(`${exportFormat.toUpperCase()} export`);
     } catch (error) {
-      console.error(error);
+      console.error(displayErrorMessage(error, "Gagal mengekspor laporan", "REPORT"));
       logExport(`${exportFormat.toUpperCase()} export`, "Gagal");
     } finally {
       setExporting(false);
@@ -306,7 +346,7 @@ export function AdminReports({ findings, profiles, reports }: AdminReportsProps)
       logExport(`Unduh ${report.fileName || report.companyName}`);
     } catch (err) {
       logExport(`Gagal unduh ${report.fileName || report.companyName}`, "Gagal");
-      console.error(err);
+      console.error(displayErrorMessage(err, "Gagal mengunduh file.", "REPORT"));
     } finally {
       setDownloadingId(null);
     }
@@ -430,7 +470,7 @@ export function AdminReports({ findings, profiles, reports }: AdminReportsProps)
                 type="button"
                 className="admin-btn admin-btn-primary admin-btn-export"
                 onClick={handleExport}
-                disabled={exporting || exportRows.length === 0}
+                disabled={exporting || exportRows.length === 0 || !isExportRangeReady}
               >
                 {exporting ? (
                   <>
@@ -442,6 +482,11 @@ export function AdminReports({ findings, profiles, reports }: AdminReportsProps)
                 )}
               </button>
             </div>
+            {!isExportRangeReady && (
+              <p className="muted" style={{ fontSize: 12 }}>
+                Pilih rentang tanggal dulu agar ekspor lebih presisi.
+              </p>
+            )}
           </div>
         </div>
 
@@ -510,49 +555,80 @@ export function AdminReports({ findings, profiles, reports }: AdminReportsProps)
                   )}
                 </tbody>
               </table>
-            </div>
           </div>
+        </div>
         </div>
       </div>
 
-        <div className="admin-panel">
-          <div className="admin-panel-head">
-            <div>
-              <div className="admin-panel-title">Monthly Report PIC</div>
-              <div className="admin-panel-sub">Daftar file laporan bulanan yang diunggah PIC</div>
-            </div>
+      <div className="admin-panel">
+        <div className="admin-panel-head">
+          <div>
+            <div className="admin-panel-title">Monthly Report PIC</div>
+            <div className="admin-panel-sub">Daftar file laporan bulanan yang diunggah PIC</div>
           </div>
+          <div className="admin-export-actions">
+            <button type="button" className="admin-btn admin-btn-sm" onClick={toggleAllReports}>
+              {allReportsSelected ? "Batal pilih semua" : "Pilih semua"}
+            </button>
+            <button
+              type="button"
+              className="admin-btn admin-btn-sm admin-btn-danger"
+              disabled={!selectedReportCount || !onDeleteReports}
+              onClick={() => setDeleteModalOpen(true)}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 6h18" />
+                <path d="M8 6V4h8v2" />
+                <path d="M6 6l1 14h10l1-14" />
+                <path d="M10 11v6M14 11v6" />
+              </svg>
+              Hapus {selectedReportCount ? `(${selectedReportCount})` : ""}
+            </button>
+          </div>
+        </div>
         <div className="admin-table-panel" style={{ border: "none", boxShadow: "none" }}>
           <div className="mobile-only admin-mobile-card-list">
             {sortedReports.length ? (
-              sortedReports.map((report) => (
-                <MobileRecordCard
-                  key={report.id}
-                  title={report.companyName}
-                  subtitle={formatDate(report.reportDate || report.reportMonth)}
-                  badge={<span className="mobile-record-chip info">Monthly Report</span>}
-                  sections={[
-                    {
-                      title: "Detail file",
-                      fields: [
-                        { label: "Periode", value: formatDate(report.reportDate || report.reportMonth) },
-                        { label: "File", value: report.fileName || "-" },
-                        { label: "Uploaded", value: formatDateTime(report.createdAt) },
-                      ],
-                    },
-                  ]}
-                  actions={
-                    <button
-                      type="button"
-                      className="admin-btn"
-                      disabled={downloadingId === report.id}
-                      onClick={() => handleDownloadMonthly(report)}
-                    >
-                      {downloadingId === report.id ? "Mengunduh..." : "Download"}
-                    </button>
-                  }
-                />
-              ))
+              sortedReports.map((report) => {
+                const checked = selectedReportSet.has(report.id);
+                return (
+                  <div key={report.id} className="admin-report-select-row">
+                    <label className="admin-report-select-check">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleReportSelection(report.id)}
+                        aria-label={`Pilih laporan ${report.fileName || report.companyName}`}
+                      />
+                    </label>
+                    <MobileRecordCard
+                      title={report.companyName}
+                      subtitle={formatDate(report.reportDate || report.reportMonth)}
+                      badge={<span className="mobile-record-chip info">Monthly Report</span>}
+                      sections={[
+                        {
+                          title: "Detail file",
+                          fields: [
+                            { label: "Periode", value: formatDate(report.reportDate || report.reportMonth) },
+                            { label: "File", value: report.fileName || "-" },
+                            { label: "Uploaded", value: formatDateTime(report.createdAt) },
+                          ],
+                        },
+                      ]}
+                      actions={
+                        <button
+                          type="button"
+                          className="admin-btn"
+                          disabled={downloadingId === report.id}
+                          onClick={() => handleDownloadMonthly(report)}
+                        >
+                          {downloadingId === report.id ? "Mengunduh..." : "Download"}
+                        </button>
+                      }
+                    />
+                  </div>
+                );
+              })
             ) : (
               <div className="admin-empty">Belum ada monthly report yang diunggah PIC.</div>
             )}
@@ -561,6 +637,14 @@ export function AdminReports({ findings, profiles, reports }: AdminReportsProps)
             <table>
               <thead>
                 <tr>
+                  <th style={{ width: 48 }}>
+                    <input
+                      type="checkbox"
+                      checked={allReportsSelected}
+                      onChange={toggleAllReports}
+                      aria-label="Pilih semua laporan"
+                    />
+                  </th>
                   <th>Perusahaan</th>
                   <th>Periode</th>
                   <th>File</th>
@@ -572,6 +656,14 @@ export function AdminReports({ findings, profiles, reports }: AdminReportsProps)
                 {sortedReports.length ? (
                   sortedReports.map((report) => (
                     <tr key={report.id} style={{ cursor: "default" }}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={selectedReportSet.has(report.id)}
+                          onChange={() => toggleReportSelection(report.id)}
+                          aria-label={`Pilih laporan ${report.fileName || report.companyName}`}
+                        />
+                      </td>
                       <td>{report.companyName}</td>
                       <td>{formatDate(report.reportDate || report.reportMonth)}</td>
                       <td className="mono">{report.fileName || "-"}</td>
@@ -590,7 +682,7 @@ export function AdminReports({ findings, profiles, reports }: AdminReportsProps)
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5} className="admin-empty">
+                    <td colSpan={6} className="admin-empty">
                       Belum ada monthly report yang diunggah PIC.
                     </td>
                   </tr>
@@ -600,7 +692,6 @@ export function AdminReports({ findings, profiles, reports }: AdminReportsProps)
           </div>
           </div>
         </div>
-
       <div className="admin-panel">
         <div className="admin-panel-head">
           <div>
@@ -630,6 +721,16 @@ export function AdminReports({ findings, profiles, reports }: AdminReportsProps)
           </div>
         </div>
       </div>
+
+      <AdminPinModal
+        open={deleteModalOpen}
+        title="Hapus Monthly Report"
+        message={`Laporan terpilih (${selectedReportCount}) akan dihapus dari database dan file storage. Masukkan PIN admin untuk melanjutkan.`}
+        confirmLabel={deletingReports ? "Menghapus..." : "Hapus Laporan"}
+        busy={deletingReports}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={confirmDeleteReports}
+      />
     </div>
   );
 }

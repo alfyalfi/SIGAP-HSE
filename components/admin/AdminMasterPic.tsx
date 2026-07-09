@@ -4,6 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import type { Finding, Profile } from "@/lib/queries";
 import type { AdminDataProps } from "./AdminDashboard";
 import { MobileRecordCard } from "../MobileRecordCard";
+import { AdminPinModal } from "./AdminPinModal";
+import { createClient } from "@/lib/supabase/client";
+import { compressImage } from "@/lib/compress";
+import { PROFILE_LOGO_BUCKET } from "@/lib/queries";
+import { displayErrorMessage } from "@/lib/errors";
 
 type PicRow = Profile & {
   total: number;
@@ -13,15 +18,30 @@ type PicRow = Profile & {
   rate: number;
 };
 
+type PicAddPayload = {
+  full_name: string;
+  email: string;
+  role: string;
+  pin: string;
+};
+
+type PicCreateResult = Profile & {
+  email?: string;
+  tempPassword?: string;
+};
+
 type AdminMasterPicProps = AdminDataProps & {
-  onPicAdd?: (payload: { full_name: string; role: string }) => void | Promise<void>;
-  onPicEdit?: (id: string, payload: { full_name: string }) => void | Promise<void>;
-  onPicDelete?: (id: string) => void | Promise<void>;
+  onPicAdd?: (payload: PicAddPayload) => Promise<PicCreateResult | void> | PicCreateResult | void;
+  onPicEdit?: (
+    id: string,
+    payload: { full_name: string; logoPath?: string | null }
+  ) => void | Promise<void>;
+  onPicDelete?: (id: string, pin: string) => void | Promise<void>;
 };
 
 function buildPicRows(findings: Finding[], profiles: Profile[]): PicRow[] {
   return profiles
-    .filter((p) => p.role !== "admin")
+    .filter((p) => p.role !== "admin" && p.is_active !== false)
     .map((p) => {
       const mine = findings.filter((f) => f.createdBy === p.id);
       const open = mine.filter((f) => f.status === "open").length;
@@ -46,6 +66,7 @@ export function AdminMasterPic({
   onPicEdit,
   onPicDelete,
 }: AdminMasterPicProps) {
+  const supabase = createClient();
   const [localProfiles, setLocalProfiles] = useState(profiles);
 
   useEffect(() => {
@@ -55,7 +76,14 @@ export function AdminMasterPic({
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Profile | null>(null);
   const [name, setName] = useState("");
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("field_staff");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState("");
+  const [pin, setPin] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<Profile | null>(null);
 
   const rows = useMemo(() => buildPicRows(findings, localProfiles), [findings, localProfiles]);
 
@@ -66,36 +94,131 @@ export function AdminMasterPic({
     return { picCount: rows.length, total, rate };
   }, [rows]);
 
+  function resetModalState() {
+    setModalOpen(false);
+    setEditing(null);
+    setName("");
+    setEmail("");
+    setRole("field_staff");
+    setLogoFile(null);
+    setLogoPreview("");
+    setPin("");
+    setError("");
+    setBusy(false);
+  }
+
   function openAdd() {
     setEditing(null);
     setName("");
+    setEmail("");
+    setRole("field_staff");
+    setLogoFile(null);
+    setLogoPreview("");
+    setPin("");
+    setError("");
     setModalOpen(true);
   }
 
   function openEdit(p: Profile) {
     setEditing(p);
     setName(p.full_name || "");
+    setEmail("");
+    setRole(p.role || "field_staff");
+    setLogoFile(null);
+    setLogoPreview(p.logoUrl || "");
+    setPin("");
+    setError("");
     setModalOpen(true);
   }
 
-  async function handleSave() {
-    if (!name.trim()) return;
-    if (editing) {
-      await onPicEdit?.(editing.id, { full_name: name.trim() });
-      setLocalProfiles((prev) => prev.map((p) => (p.id === editing.id ? { ...p, full_name: name.trim() } : p)));
-    } else {
-      const newId = `pic-${Date.now()}`;
-      const payload = { full_name: name.trim(), role: "field_staff" };
-      await onPicAdd?.(payload);
-      setLocalProfiles((prev) => [...prev, { id: newId, ...payload }]);
+  async function uploadLogo(currentLogoPath: string | null) {
+    if (!logoFile || !editing) return currentLogoPath;
+
+    const blob = await compressImage(logoFile);
+    const nextPath = `${editing.id}/logo-${Date.now()}.webp`;
+    const { error: uploadError } = await supabase.storage
+      .from(PROFILE_LOGO_BUCKET)
+      .upload(nextPath, blob, { contentType: "image/webp", upsert: false });
+    if (uploadError) throw uploadError;
+
+    if (currentLogoPath && currentLogoPath !== nextPath) {
+      await supabase.storage.from(PROFILE_LOGO_BUCKET).remove([currentLogoPath]).catch(() => undefined);
     }
-    setModalOpen(false);
+
+    return nextPath;
   }
 
-  async function handleDelete(id: string) {
-    await onPicDelete?.(id);
-    setLocalProfiles((prev) => prev.filter((p) => p.id !== id));
-    setDeleteConfirm(null);
+  async function handleAdd() {
+    if (!name.trim() || !email.trim() || !pin.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      const created = await onPicAdd?.({
+        full_name: name.trim(),
+        email: email.trim(),
+        role,
+        pin,
+      });
+      if (created && "id" in created) {
+        setLocalProfiles((prev) => [created, ...prev.filter((p) => p.id !== created.id)]);
+      }
+      resetModalState();
+    } catch (err) {
+      setError(displayErrorMessage(err, "Gagal menambah PIC.", "ADMIN"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleSaveEdit() {
+    if (!editing || !name.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      let logoPath = editing.logoPath || null;
+      logoPath = await uploadLogo(logoPath);
+
+      const updated = (await onPicEdit?.(editing.id, {
+        full_name: name.trim(),
+        logoPath,
+      })) as Profile | void;
+
+      setLocalProfiles((prev) =>
+        prev.map((p) =>
+          p.id === editing.id
+            ? {
+                ...p,
+                ...(updated || {}),
+                full_name: name.trim(),
+                role: role || p.role,
+                logoPath,
+                logoUrl: logoPath
+                  ? supabase.storage.from(PROFILE_LOGO_BUCKET).getPublicUrl(logoPath).data.publicUrl
+                  : null,
+              }
+            : p
+        )
+      );
+      resetModalState();
+    } catch (err) {
+      setError(displayErrorMessage(err, "Gagal menyimpan PIC.", "ADMIN"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDeleteConfirmed(deletePin: string) {
+    if (!deleteTarget) return;
+    setBusy(true);
+    try {
+      await onPicDelete?.(deleteTarget.id, deletePin);
+      setLocalProfiles((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch {
+      // handled by AdminPinModal
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -133,6 +256,7 @@ export function AdminMasterPic({
               <MobileRecordCard
                 key={r.id}
                 title={r.full_name || "PIC"}
+                subtitle={r.role === "field_staff" ? "PIC Lapangan" : r.role}
                 badge={
                   <span className="mobile-record-chip info">
                     {r.role === "field_staff" ? "PIC Lapangan" : r.role}
@@ -166,7 +290,7 @@ export function AdminMasterPic({
                     <button
                       type="button"
                       className="admin-btn admin-btn-danger"
-                      onClick={() => setDeleteConfirm(r.id)}
+                      onClick={() => setDeleteTarget(r)}
                     >
                       Hapus
                     </button>
@@ -199,8 +323,15 @@ export function AdminMasterPic({
                   <tr key={r.id} style={{ cursor: "default" }}>
                     <td>
                       <div className="admin-pic-cell">
-                        <span className="admin-avatar">{(r.full_name || "P").slice(0, 2).toUpperCase()}</span>
-                        {r.full_name || "—"}
+                        <span className="admin-pic-avatar">
+                          {r.logoUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={r.logoUrl} alt={r.full_name || "PIC"} />
+                          ) : (
+                            <span>{(r.full_name || "P").slice(0, 2).toUpperCase()}</span>
+                          )}
+                        </span>
+                        {r.full_name || "-"}
                       </div>
                     </td>
                     <td className="muted">{r.role === "field_staff" ? "PIC Lapangan" : r.role}</td>
@@ -228,7 +359,7 @@ export function AdminMasterPic({
                         <button
                           type="button"
                           className="admin-btn admin-btn-sm admin-btn-danger"
-                          onClick={() => setDeleteConfirm(r.id)}
+                          onClick={() => setDeleteTarget(r)}
                         >
                           Hapus
                         </button>
@@ -249,60 +380,119 @@ export function AdminMasterPic({
       </div>
 
       {modalOpen && (
-        <div className="admin-overlay" onClick={() => setModalOpen(false)}>
+        <div className="admin-overlay" onClick={resetModalState}>
           <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
             <div className="admin-detail-top">
               <div className="admin-modal-title">{editing ? "Edit PIC" : "Tambah PIC Baru"}</div>
-              <button type="button" className="admin-modal-close" onClick={() => setModalOpen(false)}>
+              <button type="button" className="admin-modal-close" onClick={resetModalState}>
                 ×
               </button>
             </div>
             <div style={{ padding: 22 }}>
-              <div className="admin-field full">
-                <label>Nama Lengkap PIC</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Nama penanggung jawab"
-                />
+              <div className="admin-form-grid">
+                <div className="admin-field full">
+                  <label>Nama Lengkap PIC</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Nama penanggung jawab"
+                  />
+                </div>
+                {!editing && (
+                  <>
+                    <div className="admin-field full">
+                      <label>Email PIC</label>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="nama@perusahaan.com"
+                      />
+                    </div>
+                    <div className="admin-field full">
+                      <label>Peran</label>
+                      <select value={role} onChange={(e) => setRole(e.target.value)}>
+                        <option value="field_staff">PIC Lapangan</option>
+                        <option value="hse_officer">HSE Officer</option>
+                        <option value="viewer">Viewer</option>
+                      </select>
+                    </div>
+                    <div className="admin-field full">
+                      <label>PIN Admin</label>
+                      <input
+                        type="password"
+                        inputMode="numeric"
+                        value={pin}
+                        onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                        placeholder="Masukkan PIN admin"
+                      />
+                    </div>
+                  </>
+                )}
+                {editing && (
+                  <div className="admin-field full">
+                    <label>Logo PIC</label>
+                    <div className="admin-form-grid" style={{ gridTemplateColumns: "auto 1fr", alignItems: "center" }}>
+                      <div className="admin-pic-logo-preview">
+                        {logoPreview ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={logoPreview} alt="Logo PIC" />
+                        ) : (
+                          <span className="muted">Logo</span>
+                        )}
+                      </div>
+                      <div>
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/jpg,image/webp"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] || null;
+                            setLogoFile(file);
+                            if (file) {
+                              const preview = URL.createObjectURL(file);
+                              setLogoPreview(preview);
+                            }
+                          }}
+                        />
+                        <p className="muted" style={{ marginTop: 6, fontSize: 12 }}>
+                          JPG, PNG, atau WEBP akan dikompresi otomatis agar tetap ringan.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
+              {error && (
+                <p style={{ color: "var(--accent-red)", fontSize: 12, marginTop: 14 }}>{error}</p>
+              )}
             </div>
             <div className="admin-modal-foot">
-              <button type="button" className="admin-btn" onClick={() => setModalOpen(false)}>
+              <button type="button" className="admin-btn" onClick={resetModalState} disabled={busy}>
                 Batal
               </button>
-              <button type="button" className="admin-btn admin-btn-primary" onClick={handleSave}>
-                Simpan
+              <button
+                type="button"
+                className="admin-btn admin-btn-primary"
+                onClick={editing ? handleSaveEdit : handleAdd}
+                disabled={busy}
+              >
+                {busy ? "Menyimpan..." : "Simpan"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {deleteConfirm && (
-        <div className="admin-overlay" onClick={() => setDeleteConfirm(null)}>
-          <div className="admin-modal" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
-            <div className="admin-detail-top">
-              <div className="admin-modal-title">Hapus PIC?</div>
-              <button type="button" className="admin-modal-close" onClick={() => setDeleteConfirm(null)}>
-                ×
-              </button>
-            </div>
-            <div style={{ padding: 22, fontSize: 13, color: "var(--text-secondary)" }}>
-              PIC yang dihapus tidak akan muncul di daftar master. Temuan yang sudah ada tetap tersimpan.
-            </div>
-            <div className="admin-modal-foot">
-              <button type="button" className="admin-btn" onClick={() => setDeleteConfirm(null)}>
-                Batal
-              </button>
-              <button type="button" className="admin-btn admin-btn-danger" onClick={() => handleDelete(deleteConfirm)}>
-                Hapus
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AdminPinModal
+        open={Boolean(deleteTarget)}
+        title="Hapus PIC?"
+        message={`PIC ${deleteTarget?.full_name || "-"} akan dinonaktifkan dan logo lama dihapus dari storage. Masukkan PIN admin untuk melanjutkan.`}
+        confirmLabel="Hapus PIC"
+        busy={busy}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirmed}
+      />
     </>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AdminShell, type AdminView } from "./AdminShell";
 import { AdminDashboard } from "./AdminDashboard";
@@ -13,11 +13,13 @@ import { createClient } from "@/lib/supabase/client";
 import {
   approveFinding,
   rejectFinding,
+  getFindingById,
   updateProfile,
   type MonthlyReport,
   type Finding,
   type Profile,
 } from "@/lib/queries";
+import { displayErrorMessage } from "@/lib/errors";
 
 type AdminWorkspaceProps = {
   initialFindings: Finding[];
@@ -38,11 +40,13 @@ export function AdminWorkspace({
   const [reports, setReports] = useState(initialReports);
   const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [toast, setToast] = useState("");
   const [syncing, setSyncing] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState(() => new Date());
+  const detailRequestRef = useRef(0);
 
   useEffect(() => {
     setFindings(initialFindings);
@@ -58,8 +62,26 @@ export function AdminWorkspace({
   }, [router]);
 
   function openFinding(finding: Finding) {
+    const requestId = ++detailRequestRef.current;
     setSelectedFinding(finding);
     setDetailOpen(true);
+    setDetailLoading(true);
+    void (async () => {
+      try {
+        const detailed = await getFindingById(supabase, finding.id);
+        if (requestId === detailRequestRef.current && detailed) {
+          setSelectedFinding(detailed);
+        }
+      } catch (err) {
+        if (requestId === detailRequestRef.current) {
+          setToast(displayErrorMessage(err, "Gagal memuat detail temuan", "ADMIN"));
+        }
+      } finally {
+        if (requestId === detailRequestRef.current) {
+          setDetailLoading(false);
+        }
+      }
+    })();
   }
 
   async function handleApprove(findingId: string) {
@@ -70,7 +92,7 @@ export function AdminWorkspace({
       );
       router.refresh();
     } catch (err) {
-      setToast(err instanceof Error ? err.message : "Gagal menyetujui");
+      setToast(displayErrorMessage(err, "Gagal menyetujui", "ADMIN"));
     }
   }
 
@@ -82,7 +104,7 @@ export function AdminWorkspace({
       );
       router.refresh();
     } catch (err) {
-      setToast(err instanceof Error ? err.message : "Gagal menolak");
+      setToast(displayErrorMessage(err, "Gagal menolak", "ADMIN"));
     }
   }
 
@@ -93,20 +115,60 @@ export function AdminWorkspace({
       body: JSON.stringify({ findingId, pin }),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Gagal menghapus temuan");
+    if (!res.ok) throw new Error(data.error || displayErrorMessage(null, "Gagal menghapus temuan", "ADMIN"));
     setFindings((prev) => prev.filter((f) => f.id !== findingId));
     setSelectedFinding(null);
     router.refresh();
   }
 
-  async function handlePicEdit(id: string, payload: { full_name: string }) {
+  async function handlePicEdit(id: string, payload: { full_name: string; logoPath?: string | null }) {
     const updated = await updateProfile(supabase, id, payload);
     setProfiles((prev) => prev.map((p) => (p.id === id ? { ...p, ...updated } : p)));
   }
 
-  async function handlePicDelete(id: string) {
-    await updateProfile(supabase, id, { is_active: false });
+  async function handlePicAdd(payload: { full_name: string; email: string; role: string; pin: string }) {
+    const res = await fetch("/api/admin/pic", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "add", ...payload }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || displayErrorMessage(null, "Gagal menambah PIC", "ADMIN"));
+    }
+    const created = data.profile as Profile & { email?: string; tempPassword?: string };
+    setProfiles((prev) => [created, ...prev]);
+    router.refresh();
+    return created;
+  }
+
+  async function handlePicDelete(id: string, pin: string) {
+    const res = await fetch("/api/admin/pic", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "delete", id, pin }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || displayErrorMessage(null, "Gagal menghapus PIC", "ADMIN"));
+    }
     setProfiles((prev) => prev.filter((p) => p.id !== id));
+    router.refresh();
+  }
+
+  async function handleDeleteMonthlyReports(reportIds: string[], pin: string) {
+    const res = await fetch("/api/admin/delete-monthly-reports", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reportIds, pin }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || displayErrorMessage(null, "Gagal menghapus laporan.", "REPORT"));
+    }
+    setReports((prev) => prev.filter((report) => !reportIds.includes(report.id)));
+    router.refresh();
+    return data;
   }
 
   const dataProps = {
@@ -155,17 +217,15 @@ export function AdminWorkspace({
           <AdminFindingsList {...dataProps} onViewFinding={openFinding} />
         )}
         {view === "analisis" && <AdminAnalytics {...dataProps} />}
-        {view === "laporan" && <AdminReports {...dataProps} reports={reports} />}
+        {view === "laporan" && (
+          <AdminReports {...dataProps} reports={reports} onDeleteReports={handleDeleteMonthlyReports} />
+        )}
         {view === "pic" && (
           <AdminMasterPic
             {...dataProps}
             onPicEdit={handlePicEdit}
             onPicDelete={handlePicDelete}
-            onPicAdd={async () => {
-              setToast(
-                "Untuk menambah PIC baru, buat user di Supabase Auth lalu update profil di sini."
-              );
-            }}
+            onPicAdd={handlePicAdd}
           />
         )}
       </AdminShell>
@@ -174,7 +234,12 @@ export function AdminWorkspace({
         finding={selectedFinding}
         profiles={profiles}
         open={detailOpen}
-        onClose={() => setDetailOpen(false)}
+        loading={detailLoading}
+        onClose={() => {
+          detailRequestRef.current += 1;
+          setDetailOpen(false);
+          setDetailLoading(false);
+        }}
         onApprove={handleApprove}
         onReject={handleReject}
         onDelete={handleDelete}

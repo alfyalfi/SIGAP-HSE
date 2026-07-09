@@ -10,6 +10,7 @@ type AdminFindingDetailProps = {
   finding: Finding | null;
   profiles: Profile[];
   open: boolean;
+  loading?: boolean;
   onClose: () => void;
   onApprove?: (findingId: string) => void | Promise<void>;
   onReject?: (findingId: string) => void | Promise<void>;
@@ -25,11 +26,13 @@ function PhotoGrid({
   stage,
   label,
   accent,
+  onOpenPhoto,
 }: {
   photos: Finding["photos"];
   stage: string;
   label: string;
   accent: "before" | "after";
+  onOpenPhoto: (photo: Finding["photos"][number]) => void;
 }) {
   const items = photos.filter((p) => p.stage === stage);
   return (
@@ -38,10 +41,16 @@ function PhotoGrid({
       <div className="admin-photo-grid">
         {items.length ? (
           items.map((p) => (
-            <div key={p.id} className={`admin-photo-ph ${accent}`}>
+            <button
+              key={p.id}
+              type="button"
+              className={`admin-photo-ph ${accent} admin-photo-btn`}
+              onClick={() => onOpenPhoto(p)}
+              title="Klik untuk lihat penuh"
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={p.publicUrl} alt={`Foto ${stage}`} />
-            </div>
+            </button>
           ))
         ) : (
           <div className="admin-photo-ph empty">Belum ada foto</div>
@@ -55,6 +64,7 @@ export function AdminFindingDetail({
   finding,
   profiles,
   open,
+  loading = false,
   onClose,
   onApprove,
   onReject,
@@ -63,6 +73,7 @@ export function AdminFindingDetail({
   const [busy, setBusy] = useState(false);
   const [showDeletePin, setShowDeletePin] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [activePhoto, setActivePhoto] = useState<Finding["photos"][number] | null>(null);
 
   if (!open || !finding) return null;
 
@@ -71,7 +82,7 @@ export function AdminFindingDetail({
   const canReview = finding.status === "progress";
 
   async function handleApprove() {
-    if (!onApprove || busy) return;
+    if (!onApprove || busy || loading) return;
     setBusy(true);
     try {
       await onApprove(findingId);
@@ -82,7 +93,7 @@ export function AdminFindingDetail({
   }
 
   async function handleReject() {
-    if (!onReject || busy) return;
+    if (!onReject || busy || loading) return;
     setBusy(true);
     try {
       await onReject(findingId);
@@ -93,7 +104,7 @@ export function AdminFindingDetail({
   }
 
   async function handleDeleteConfirm(pin: string) {
-    if (!onDelete || busy) return;
+    if (!onDelete || busy || loading) return;
     setBusy(true);
     setDeleteError("");
     try {
@@ -159,6 +170,17 @@ export function AdminFindingDetail({
 
           <div className="admin-detail-grid">
             <div className="admin-detail-col">
+              {loading && (
+                <div className="admin-detail-loading">
+                  <div className="admin-loading-dot" />
+                  <div>
+                    <div className="admin-panel-title" style={{ fontSize: 15 }}>
+                      Memuat detail temuan...
+                    </div>
+                    <div className="muted">Mengambil foto dan timeline yang lengkap.</div>
+                  </div>
+                </div>
+              )}
               <div className="admin-detail-meta">
                 <div className="admin-detail-meta-item">
                   <label>Judul Temuan</label>
@@ -206,12 +228,14 @@ export function AdminFindingDetail({
                 stage="before"
                 label="Kondisi Sebelum (Unsafe)"
                 accent="before"
+                onOpenPhoto={setActivePhoto}
               />
               <PhotoGrid
                 photos={finding.photos}
                 stage="after"
                 label="Kondisi Sesudah (Safe)"
                 accent="after"
+                onOpenPhoto={setActivePhoto}
               />
 
               {canReview && (
@@ -225,7 +249,7 @@ export function AdminFindingDetail({
                     <button
                       type="button"
                       className="admin-btn admin-btn-success"
-                      disabled={busy}
+                      disabled={busy || loading}
                       onClick={handleApprove}
                     >
                       Setujui dan Tutup
@@ -233,7 +257,7 @@ export function AdminFindingDetail({
                     <button
                       type="button"
                       className="admin-btn admin-btn-danger"
-                      disabled={busy}
+                      disabled={busy || loading}
                       onClick={handleReject}
                     >
                       Minta Revisi
@@ -252,7 +276,7 @@ export function AdminFindingDetail({
                   <button
                     type="button"
                     className="admin-btn admin-btn-danger"
-                    disabled={busy}
+                    disabled={busy || loading}
                     onClick={() => setShowDeletePin(true)}
                   >
                     Hapus Permanen
@@ -298,6 +322,28 @@ export function AdminFindingDetail({
         }}
         onConfirm={handleDeleteConfirm}
       />
+
+      {activePhoto && (
+        <div className="admin-photo-viewer" onClick={() => setActivePhoto(null)}>
+          <div className="admin-photo-viewer-shell" onClick={(e) => e.stopPropagation()}>
+            <div className="admin-photo-viewer-head">
+              <div>
+                <div className="eyebrow" style={{ marginBottom: 4 }}>
+                  Full View
+                </div>
+                <div className="admin-panel-title" style={{ fontSize: 15 }}>
+                  Foto {activePhoto.stage}
+                </div>
+              </div>
+              <button type="button" className="admin-modal-close" onClick={() => setActivePhoto(null)}>
+                ×
+              </button>
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={activePhoto.publicUrl} alt={`Foto ${activePhoto.stage}`} className="admin-photo-viewer-img" />
+          </div>
+        </div>
+      )}
     </>
   );
 }

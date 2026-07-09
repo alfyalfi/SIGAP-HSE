@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { uploadMonthlyReport, type MonthlyReport } from "@/lib/queries";
 import { formatDate, formatDateTime, toLocalDateValue } from "@/lib/constants";
 import { withTimeout } from "@/lib/async-utils";
+import { displayErrorMessage } from "@/lib/errors";
 
 export function MonthlyReportForm({
   companyName,
@@ -34,7 +35,7 @@ export function MonthlyReportForm({
       setReportDate(toLocalDateValue());
       router.refresh();
     } catch (err) {
-      setToast(err instanceof Error ? err.message : "Gagal upload");
+      setToast(displayErrorMessage(err, "Gagal upload", "REPORT"));
     } finally {
       setLoading(false);
     }

@@ -1,5 +1,7 @@
 "use client";
 
+import { formatErrorMessage, normalizeError } from "@/lib/errors";
+
 export default function GlobalError({
   error,
   reset,
@@ -7,12 +9,24 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const normalized = normalizeError(error, "Terjadi kesalahan sistem.", "SYS");
+
   return (
     <html lang="id">
-      <body style={{ fontFamily: "system-ui, sans-serif", padding: 40, background: "#0f172a", color: "#f8fafc" }}>
-        <h1>SIGAP HSE — Kesalahan Sistem</h1>
+      <body
+        style={{
+          fontFamily: "system-ui, sans-serif",
+          padding: 40,
+          background: "#0f172a",
+          color: "#f8fafc",
+        }}
+      >
+        <h1>SIGAP HSE - Kesalahan Sistem</h1>
         <p style={{ color: "#94a3b8", marginBottom: 24 }}>
-          {error.message || "Terjadi kesalahan yang tidak terduga."}
+          {formatErrorMessage(error, "Terjadi kesalahan yang tidak terduga.", "SYS")}
+        </p>
+        <p style={{ color: "#cbd5e1", marginBottom: 24, fontSize: 12 }}>
+          Error ID: {normalized.errorId}
         </p>
         <button
           type="button"
