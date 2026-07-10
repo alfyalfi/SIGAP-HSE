@@ -1,11 +1,12 @@
 "use client";
 
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { StatusBadge } from "./StatusBadge";
 import { MobileRecordCard } from "./MobileRecordCard";
-import { type Finding } from "@/lib/queries";
+import { createClient } from "@/lib/supabase/client";
+import { getFindingById, type Finding } from "@/lib/queries";
 import { formatDateTime } from "@/lib/constants";
 
 function KpiRow({
@@ -25,7 +26,7 @@ function KpiRow({
     { label: "Rejected", value: findings.filter((f) => f.status === "rejected").length, cls: "rejected" },
   ];
   return (
-    <div className="kpi-row kpi-row-scroll">
+    <div className="kpi-row">
       {cards.map((c) => (
         <button
           key={c.label}
@@ -44,11 +45,16 @@ function KpiRow({
 
 export function UserDashboard({ findings }: { findings: Finding[] }) {
   const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
   const [statusFilter, setStatusFilter] = useState("");
   const [areaFilter, setAreaFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const detailRequestRef = useRef(0);
   const deferredStatusFilter = useDeferredValue(statusFilter);
   const deferredAreaFilter = useDeferredValue(areaFilter);
   const deferredDateFrom = useDeferredValue(dateFrom);
@@ -77,8 +83,29 @@ export function UserDashboard({ findings }: { findings: Finding[] }) {
     return f.status === "open" || f.status === "rejected";
   }
 
+  function closeDetail() {
+    detailRequestRef.current += 1;
+    setDetailOpen(false);
+    setDetailLoading(false);
+  }
+
   function openFinding(f: Finding) {
-    if (canUpdate(f)) router.push(`/form-after/${f.id}`);
+    const requestId = ++detailRequestRef.current;
+    setSelectedFinding(f);
+    setDetailOpen(true);
+    setDetailLoading(true);
+    void (async () => {
+      try {
+        const detailed = await getFindingById(supabase, f.id);
+        if (requestId === detailRequestRef.current && detailed) {
+          setSelectedFinding(detailed);
+        }
+      } finally {
+        if (requestId === detailRequestRef.current) {
+          setDetailLoading(false);
+        }
+      }
+    })();
   }
 
   function handleRowKeyDown(event: ReactKeyboardEvent<HTMLTableRowElement>, finding: Finding) {
@@ -92,9 +119,7 @@ export function UserDashboard({ findings }: { findings: Finding[] }) {
       <div className="page-intro dashboard-intro">
         <div>
           <h2>Dashboard Temuan</h2>
-          <p className="muted">
-            Ketuk temuan <strong>open</strong> / <strong>rejected</strong> untuk isi data after.
-          </p>
+          <p className="muted">Ketuk temuan untuk melihat detail dan tindak lanjutnya.</p>
         </div>
         <button
           type="button"
@@ -177,9 +202,8 @@ export function UserDashboard({ findings }: { findings: Finding[] }) {
                   type="button"
                   className="button button-primary"
                   onClick={() => openFinding(f)}
-                  disabled={!canUpdate(f)}
                 >
-                  {canUpdate(f) ? "Lanjutkan" : "Belum dapat diproses"}
+                  Detail
                 </button>
               }
             />
@@ -209,10 +233,10 @@ export function UserDashboard({ findings }: { findings: Finding[] }) {
                 filtered.map((f) => (
                   <tr
                     key={f.id}
-                    className={canUpdate(f) ? "row-clickable" : undefined}
-                    tabIndex={canUpdate(f) ? 0 : undefined}
-                    role={canUpdate(f) ? "button" : undefined}
-                    title={canUpdate(f) ? "Klik untuk lanjut input after" : undefined}
+                    className="row-clickable"
+                    tabIndex={0}
+                    role="button"
+                    title="Klik untuk melihat detail"
                     onClick={() => openFinding(f)}
                     onKeyDown={(event) => handleRowKeyDown(event, f)}
                   >
@@ -237,6 +261,78 @@ export function UserDashboard({ findings }: { findings: Finding[] }) {
           </table>
         </div>
       </div>
+
+      {detailOpen && selectedFinding && (
+        <div className="modal finding-detail-modal" role="dialog" aria-modal="true">
+          <div className="modal-backdrop" onClick={closeDetail} />
+          <div className="modal-card card modal-wide finding-detail-card" onClick={(e) => e.stopPropagation()}>
+            <div className="finding-detail-head">
+              <div>
+                <div className="eyebrow">Detail Temuan</div>
+                <h3 className="section-title mono">{selectedFinding.code}</h3>
+              </div>
+              <StatusBadge status={selectedFinding.status} />
+            </div>
+
+            {detailLoading && <p className="muted">Memuat detail...</p>}
+
+            <div className="finding-detail-grid">
+              <div className="finding-detail-meta">
+                <div>
+                  <span>Judul</span>
+                  <strong>{selectedFinding.title}</strong>
+                </div>
+                <div>
+                  <span>Tanggal</span>
+                  <strong>{formatDateTime(selectedFinding.foundDatetime || selectedFinding.foundAt)}</strong>
+                </div>
+                <div>
+                  <span>Area</span>
+                  <strong>{selectedFinding.areaName}</strong>
+                </div>
+                <div>
+                  <span>Kategori</span>
+                  <strong>{selectedFinding.categoryName}</strong>
+                </div>
+              </div>
+
+              <div className="finding-detail-box">
+                <div className="eyebrow">Deskripsi</div>
+                <p>{selectedFinding.photoDescription || "-"}</p>
+              </div>
+
+              {selectedFinding.status === "rejected" && (
+                <div className="finding-detail-warning">
+                  <div className="eyebrow">Perlu Revisi</div>
+                  <p>
+                    Terdapat data yang tidak dapat divalidasi oleh tim admin. Harap lakukan input temuan ulang.
+                    Data temuan ini akan otomatis terhapus dalam waktu 1x24 jam.
+                  </p>
+                  <div className="finding-detail-comment">
+                    <span>Komentar admin</span>
+                    <strong>{selectedFinding.rejectComment || "Tidak ada komentar."}</strong>
+                  </div>
+                </div>
+              )}
+
+              <div className="finding-detail-box finding-detail-actions">
+                <button type="button" className="button button-secondary" onClick={closeDetail}>
+                  Tutup
+                </button>
+                {canUpdate(selectedFinding) && (
+                  <button
+                    type="button"
+                    className="button button-primary"
+                    onClick={() => router.push(`/form-after/${selectedFinding.id}`)}
+                  >
+                    {selectedFinding.status === "rejected" ? "Proses Revisi" : "Proses After"}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

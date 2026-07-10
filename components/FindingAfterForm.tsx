@@ -160,6 +160,20 @@ export function FindingAfterForm({ finding }: { finding: Finding }) {
               </div>
             )}
 
+            {finding.status === "rejected" && (
+              <div className="finding-detail-warning" style={{ marginBottom: 14 }}>
+                <div className="eyebrow">Temuan Perlu Revisi</div>
+                <p style={{ marginBottom: 10 }}>
+                  Terdapat data yang tidak dapat divalidasi oleh tim admin. Harap lakukan input temuan ulang.
+                  Data temuan ini akan otomatis terhapus dalam waktu 1x24 jam.
+                </p>
+                <div className="finding-detail-comment">
+                  <span>Komentar admin</span>
+                  <strong>{finding.rejectComment || "Tidak ada komentar dari admin."}</strong>
+                </div>
+              </div>
+            )}
+
             <MediaSourceMenu
               label="Foto After"
               mainLabel="Upload After"

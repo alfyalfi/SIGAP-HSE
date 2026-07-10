@@ -13,7 +13,7 @@ type AdminFindingDetailProps = {
   loading?: boolean;
   onClose: () => void;
   onApprove?: (findingId: string) => void | Promise<void>;
-  onReject?: (findingId: string) => void | Promise<void>;
+  onReject?: (findingId: string, note?: string) => void | Promise<void>;
   onDelete?: (findingId: string, pin: string) => void | Promise<void>;
 };
 
@@ -74,6 +74,8 @@ export function AdminFindingDetail({
   const [showDeletePin, setShowDeletePin] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [activePhoto, setActivePhoto] = useState<Finding["photos"][number] | null>(null);
+  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [rejectNote, setRejectNote] = useState("");
 
   if (!open || !finding) return null;
 
@@ -96,7 +98,9 @@ export function AdminFindingDetail({
     if (!onReject || busy || loading) return;
     setBusy(true);
     try {
-      await onReject(findingId);
+      await onReject(findingId, rejectNote.trim() || undefined);
+      setShowRejectForm(false);
+      setRejectNote("");
       onClose();
     } finally {
       setBusy(false);
@@ -258,9 +262,50 @@ export function AdminFindingDetail({
                       type="button"
                       className="admin-btn admin-btn-danger"
                       disabled={busy || loading}
-                      onClick={handleReject}
+                      onClick={() => setShowRejectForm(true)}
                     >
                       Minta Revisi
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {showRejectForm && (
+                <div className="admin-review-box" style={{ marginTop: 14 }}>
+                  <div className="eyebrow">Catatan Revisi</div>
+                  <p className="muted" style={{ marginBottom: 12 }}>
+                    Tulis alasan revisi agar PIC menerima penjelasan yang jelas saat membuka form after.
+                  </p>
+                  <label className="admin-field full">
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>
+                      Komentar admin
+                    </span>
+                    <textarea
+                      value={rejectNote}
+                      onChange={(e) => setRejectNote(e.target.value)}
+                      rows={4}
+                      placeholder="Contoh: Foto belum memperlihatkan area bahaya secara jelas."
+                    />
+                  </label>
+                  <div className="admin-action-row" style={{ marginTop: 10 }}>
+                    <button
+                      type="button"
+                      className="admin-btn"
+                      disabled={busy || loading}
+                      onClick={() => {
+                        setShowRejectForm(false);
+                        setRejectNote("");
+                      }}
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-btn admin-btn-danger"
+                      disabled={busy || loading}
+                      onClick={handleReject}
+                    >
+                      Kirim Revisi
                     </button>
                   </div>
                 </div>

@@ -45,6 +45,7 @@ export type Finding = {
   resolvedDatetime: string | null;
   createdBy: string;
   createdAt: string;
+  rejectComment?: string | null;
   photoCounts: PhotoCounts;
   photos: FindingPhoto[];
 };
@@ -127,7 +128,21 @@ function normalizeFinding(row: Record<string, unknown>): Omit<Finding, "photos" 
     resolvedDatetime: (row.resolved_datetime as string) || null,
     createdBy: row.created_by as string,
     createdAt: row.created_at as string,
+    rejectComment: null,
   };
+}
+
+async function getRejectComment(client: SupabaseClient, findingId: string) {
+  const { data, error } = await client
+    .from("activity_log")
+    .select("detail")
+    .eq("finding_id", findingId)
+    .eq("action", "status_changed")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return (data?.detail as string | null) || null;
 }
 
 async function getFindingPhotos(client: SupabaseClient, findingId: string) {
@@ -355,8 +370,10 @@ export async function getFindingById(
   if (!data) return null;
 
   const photos = await getFindingPhotos(client, data.id);
+  const rejectComment = data.status === "rejected" ? await getRejectComment(client, data.id) : null;
   return {
     ...normalizeFinding(data),
+    rejectComment,
     photoCounts: {
       before: photos.filter((photo) => photo.stage === "before").length,
       after: photos.filter((photo) => photo.stage === "after").length,
@@ -462,7 +479,7 @@ export async function approveFinding(client: SupabaseClient, findingId: string) 
   return data;
 }
 
-export async function rejectFinding(client: SupabaseClient, findingId: string) {
+export async function rejectFinding(client: SupabaseClient, findingId: string, comment?: string) {
   const profile = await getCurrentProfile(client);
   if (profile.role !== "admin") throw new Error("Hanya admin yang dapat menolak temuan.");
 
@@ -479,7 +496,7 @@ export async function rejectFinding(client: SupabaseClient, findingId: string) {
     finding_id: findingId,
     actor_id: profile.id,
     action: "status_changed",
-    detail: "Ditolak admin — status rejected",
+    detail: comment?.trim() || "Temuan perlu direvisi oleh PIC.",
   });
   return data;
 }

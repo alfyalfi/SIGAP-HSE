@@ -112,9 +112,9 @@ export function AdminWorkspace({
     }
   }
 
-  async function handleReject(findingId: string) {
+  async function handleReject(findingId: string, note?: string) {
     try {
-      await rejectFinding(supabase, findingId);
+      await rejectFinding(supabase, findingId, note);
       setFindings((prev) =>
         prev.map((f) => (f.id === findingId ? { ...f, status: "rejected" } : f))
       );

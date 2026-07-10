@@ -44,7 +44,7 @@ export type AdminDataProps = {
   profiles: Profile[];
   onRefresh?: () => void;
   onApprove?: (findingId: string) => void | Promise<void>;
-  onReject?: (findingId: string) => void | Promise<void>;
+  onReject?: (findingId: string, note?: string) => void | Promise<void>;
 };
 
 type AdminDashboardProps = AdminDataProps & {
