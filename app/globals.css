@@ -718,10 +718,26 @@ input[readonly] { background: var(--surface-2); color: var(--text-secondary); cu
   margin-bottom: 20px;
 }
 .kpi-card {
+  width: 100%;
+  appearance: none;
+  border: 1px solid var(--border);
   background: var(--surface);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-card);
   padding: 18px 20px;
+  text-align: left;
+  display: grid;
+  gap: 0;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+.kpi-card.active {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px rgba(108, 92, 231, 0.12), var(--shadow-lg);
 }
 .kpi-card p { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; font-weight: 600; }
 .kpi-card strong { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 32px; line-height: 1; }
@@ -1157,7 +1173,7 @@ tbody tr:last-child td { border-bottom: none; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 14px;
+  gap: 16px;
   min-height: 40vh;
   color: var(--text-secondary);
   font-size: 14px;
@@ -1166,24 +1182,32 @@ tbody tr:last-child td { border-bottom: none; }
 .admin-loading {
   min-height: 100vh;
   padding: 24px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
 }
 .page-loading-shell {
-  width: min(1120px, 100%);
+  width: min(640px, 100%);
   margin: 0 auto;
   display: grid;
   gap: 18px;
+  justify-items: center;
+  text-align: center;
 }
-.page-loading-hero,
-.page-loading-panel,
-.admin-loading-grid,
-.admin-loading-top {
+.page-loading-hero {
   display: grid;
   gap: 14px;
+  justify-items: center;
+}
+.page-loading-panel {
+  display: grid;
+  gap: 12px;
 }
 .page-loading-chip-row {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+  justify-content: center;
 }
 .page-loading-grid,
 .admin-loading-grid {
@@ -1196,6 +1220,105 @@ tbody tr:last-child td { border-bottom: none; }
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
   padding: 20px;
+  width: 100%;
+}
+.page-loading-core {
+  width: min(320px, 100%);
+  display: grid;
+  place-items: center;
+  gap: 14px;
+  padding: 28px 18px;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(108, 92, 231, 0.14), transparent 58%),
+    linear-gradient(180deg, rgba(255,255,255,0.75), rgba(255,255,255,0.55));
+  border: 1px solid rgba(108, 92, 231, 0.16);
+  box-shadow: 0 18px 50px rgba(20, 21, 26, 0.08);
+}
+[data-theme="dark"] .page-loading-core {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(139, 124, 250, 0.16), transparent 58%),
+    linear-gradient(180deg, rgba(28, 30, 38, 0.96), rgba(28, 30, 38, 0.82));
+}
+.page-loading-radar {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at center, rgba(108, 92, 231, 0.08) 0 22%, transparent 24%),
+    radial-gradient(circle at center, transparent 0 44%, rgba(108, 92, 231, 0.14) 45% 46%, transparent 47%),
+    radial-gradient(circle at center, transparent 0 66%, rgba(255, 138, 61, 0.12) 67% 68%, transparent 69%);
+}
+.page-loading-radar::before,
+.page-loading-radar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+.page-loading-radar::before {
+  background:
+    conic-gradient(from 0deg, rgba(255, 138, 61, 0), rgba(255, 138, 61, 0.38), rgba(108, 92, 231, 0));
+  mask: radial-gradient(circle, transparent 0 38%, #000 39% 100%);
+  animation: radarSweep 1.9s linear infinite;
+}
+.page-loading-radar::after {
+  border: 1px solid rgba(108, 92, 231, 0.14);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.45) inset,
+    0 0 0 10px rgba(108, 92, 231, 0.04),
+    0 0 0 24px rgba(108, 92, 231, 0.03);
+  animation: radarPulse 1.8s ease-in-out infinite;
+}
+.page-loading-logo {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.2) 35%, transparent 38%),
+    linear-gradient(135deg, var(--accent-primary), var(--accent-orange));
+  box-shadow: 0 10px 24px rgba(108, 92, 231, 0.25);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.page-loading-logo::before {
+  content: "";
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 2px solid rgba(255, 255, 255, 0.88);
+  box-shadow: 0 0 0 10px rgba(255, 255, 255, 0.08);
+}
+.page-loading-logo::after {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  animation: radarPulse 1.8s ease-in-out infinite;
+}
+.page-loading-text {
+  display: grid;
+  gap: 4px;
+}
+.page-loading-text strong {
+  font-family: var(--font-jakarta), "Plus Jakarta Sans", sans-serif;
+  font-size: 20px;
+  color: var(--text-primary);
+}
+.page-loading-text span {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.page-loading-orbit {
+  width: 100%;
+  display: flex;
+  justify-content: center;
 }
 .ui-skeleton {
   position: relative;
@@ -1224,6 +1347,14 @@ tbody tr:last-child td { border-bottom: none; }
   animation: sigap-spin 0.8s linear infinite;
 }
 @keyframes sigap-spin { to { transform: rotate(360deg); } }
+@keyframes radarSweep {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes radarPulse {
+  0%, 100% { opacity: 0.45; transform: scale(0.98); }
+  50% { opacity: 1; transform: scale(1.03); }
+}
 
 .global-loading {
   position: fixed;
@@ -1293,6 +1424,24 @@ tbody tr:last-child td { border-bottom: none; }
   }
   .app-main { padding: 16px 14px 40px; }
   .form-grid, .kpi-row, .monthly-grid, .filter-row { grid-template-columns: 1fr; }
+  .page-loading-surface,
+  .admin-loading {
+    padding: 16px;
+  }
+  .page-loading-shell {
+    width: min(100%, 100%);
+  }
+  .page-loading-core {
+    width: min(300px, 100%);
+    padding: 24px 16px;
+  }
+  .page-loading-radar {
+    width: 124px;
+    height: 124px;
+  }
+  .page-loading-text strong {
+    font-size: 18px;
+  }
   .dashboard-intro {
     flex-direction: column;
     align-items: stretch;

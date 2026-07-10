@@ -164,11 +164,9 @@ export function FindingAfterForm({ finding }: { finding: Finding }) {
               label="Foto After"
               mainLabel="Upload After"
               cameraLabel="Buka Kamera"
-              galleryLabel="Buka Galeri"
               helperText="Ambil foto baru atau pilih file dari galeri perangkat."
               onMainClick={triggerGalleryInput}
               onCameraClick={triggerCameraInput}
-              onGalleryClick={triggerGalleryInput}
             />
             <input
               ref={cameraInputRef}

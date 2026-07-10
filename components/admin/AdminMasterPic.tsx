@@ -473,11 +473,9 @@ export function AdminMasterPic({
                     label="Display Picture PIC"
                     mainLabel="Upload Picture"
                     cameraLabel="Ambil dari Kamera"
-                    galleryLabel="Ambil dari Galeri"
                     helperText="Format PNG, JPG, JPEG, WEBP, GIF, AVIF, HEIC, atau HEIF. Maksimal 7680 × 7680 px."
                     onMainClick={() => openLogoPicker("gallery")}
                     onCameraClick={() => openLogoPicker("camera")}
-                    onGalleryClick={() => openLogoPicker("gallery")}
                   />
                   <input
                     ref={cameraInputRef}

@@ -204,11 +204,9 @@ export function FindingForm({ companyName }: { companyName: string }) {
               label="Foto Temuan (Before)"
               mainLabel="Upload Before"
               cameraLabel="Buka Kamera"
-              galleryLabel="Buka Galeri"
               helperText="Pilih kamera untuk foto baru, atau galeri untuk file yang sudah ada."
               onMainClick={triggerGalleryInput}
               onCameraClick={triggerCameraInput}
-              onGalleryClick={triggerGalleryInput}
             />
             <input
               ref={cameraInputRef}

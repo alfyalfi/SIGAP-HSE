@@ -7,10 +7,8 @@ type MediaSourceMenuProps = {
   helperText?: string;
   mainLabel?: string;
   cameraLabel?: string;
-  galleryLabel?: string;
   onMainClick: () => void;
   onCameraClick: () => void;
-  onGalleryClick: () => void;
   disabled?: boolean;
 };
 
@@ -19,10 +17,8 @@ export function MediaSourceMenu({
   helperText,
   mainLabel = "Upload Foto",
   cameraLabel = "Buka Kamera",
-  galleryLabel = "Buka Galeri",
   onMainClick,
   onCameraClick,
-  onGalleryClick,
   disabled = false,
 }: MediaSourceMenuProps) {
   const [open, setOpen] = useState(false);
@@ -58,7 +54,10 @@ export function MediaSourceMenu({
         <button
           type="button"
           className="media-source-menu-main"
-          onClick={onMainClick}
+          onClick={() => {
+            setOpen(false);
+            onMainClick();
+          }}
           disabled={disabled}
         >
           <span className="media-source-menu-icon" aria-hidden>
@@ -101,26 +100,6 @@ export function MediaSourceMenu({
               <span>
                 <strong>{cameraLabel}</strong>
                 <small>Gunakan kamera perangkat</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className="media-source-menu-item"
-              onClick={() => {
-                setOpen(false);
-                onGalleryClick();
-              }}
-            >
-              <span className="media-source-menu-item-icon" aria-hidden>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M4 19V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14" />
-                  <path d="m4 15 5-5 4 4 3-3 4 4" />
-                  <path d="M7 9h.01" />
-                </svg>
-              </span>
-              <span>
-                <strong>{galleryLabel}</strong>
-                <small>Pilih dari file foto yang sudah ada</small>
               </span>
             </button>
           </div>

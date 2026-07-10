@@ -1,13 +1,22 @@
 "use client";
 
 import { useDeferredValue, useMemo, useState } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { StatusBadge } from "./StatusBadge";
 import { MobileRecordCard } from "./MobileRecordCard";
 import { type Finding } from "@/lib/queries";
 import { formatDateTime } from "@/lib/constants";
 
-function KpiRow({ findings }: { findings: Finding[] }) {
+function KpiRow({
+  findings,
+  onFilter,
+  activeStatus,
+}: {
+  findings: Finding[];
+  onFilter: (status: string) => void;
+  activeStatus: string;
+}) {
   const cards = [
     { label: "Total", value: findings.length, cls: "" },
     { label: "Open", value: findings.filter((f) => f.status === "open").length, cls: "open" },
@@ -18,10 +27,16 @@ function KpiRow({ findings }: { findings: Finding[] }) {
   return (
     <div className="kpi-row kpi-row-scroll">
       {cards.map((c) => (
-        <div key={c.label} className={`kpi-card kpi-${c.cls}`}>
+        <button
+          key={c.label}
+          type="button"
+          className={`kpi-card kpi-${c.cls}${activeStatus === c.cls ? " active" : ""}`}
+          onClick={() => onFilter(c.cls)}
+          title="Klik untuk memfilter daftar"
+        >
           <p>{c.label}</p>
           <strong>{c.value}</strong>
-        </div>
+        </button>
       ))}
     </div>
   );
@@ -66,6 +81,12 @@ export function UserDashboard({ findings }: { findings: Finding[] }) {
     if (canUpdate(f)) router.push(`/form-after/${f.id}`);
   }
 
+  function handleRowKeyDown(event: ReactKeyboardEvent<HTMLTableRowElement>, finding: Finding) {
+    if (event.key !== "Enter" && event.key !== "Space" && event.key !== " ") return;
+    event.preventDefault();
+    openFinding(finding);
+  }
+
   return (
     <>
       <div className="page-intro dashboard-intro">
@@ -85,7 +106,11 @@ export function UserDashboard({ findings }: { findings: Finding[] }) {
         </button>
       </div>
 
-      <KpiRow findings={findings} />
+      <KpiRow
+        findings={findings}
+        onFilter={setStatusFilter}
+        activeStatus={statusFilter}
+      />
 
       <div className="card filter-card">
         <div className="filter-row filter-row-primary">
@@ -182,8 +207,14 @@ export function UserDashboard({ findings }: { findings: Finding[] }) {
             <tbody>
               {filtered.length ? (
                 filtered.map((f) => (
-                <tr
-                  key={f.id}
+                  <tr
+                    key={f.id}
+                    className={canUpdate(f) ? "row-clickable" : undefined}
+                    tabIndex={canUpdate(f) ? 0 : undefined}
+                    role={canUpdate(f) ? "button" : undefined}
+                    title={canUpdate(f) ? "Klik untuk lanjut input after" : undefined}
+                    onClick={() => openFinding(f)}
+                    onKeyDown={(event) => handleRowKeyDown(event, f)}
                   >
                     <td className="mono">{f.code}</td>
                     <td>{f.title}</td>
