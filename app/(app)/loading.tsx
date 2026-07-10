@@ -6,17 +6,9 @@ export default function AppLoading() {
   return (
     <div className="page-loading-surface" role="status" aria-live="polite">
       <div className="page-loading-shell">
-        <div className="page-loading-core">
-          <div className="page-loading-radar" aria-hidden>
-            <div className="page-loading-logo" />
-          </div>
-          <div className="page-loading-text">
-            <strong>SIGAP HSE</strong>
-            <span>Memuat halaman SIGAP HSE...</span>
-          </div>
-          <div className="page-loading-orbit">
-            <div className="page-loading-spinner" />
-          </div>
+        <div className="page-loading">
+          <div className="page-loading-spinner" />
+          <div className="muted">Memuat halaman SIGAP HSE...</div>
         </div>
         <div className="page-loading-hero">
           <SkeletonBlock className="skeleton-title" />
