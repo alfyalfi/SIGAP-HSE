@@ -110,7 +110,7 @@ export function LoginForm() {
           <h1 className="sigap-hero-title">SIGAP</h1>
           <p className="sigap-hero-subtitle">{SIGAP_FULL_NAME}</p>
           <p className="auth-hero-desc">
-            Pelaporan temuan HSE, tindak lanjut lapangan, dan approval terpusat untuk seluruh
+            Pelaporan temuan EHS, tindak lanjut lapangan, dan approval terpusat untuk seluruh
             perusahaan.
           </p>
         </div>
@@ -123,7 +123,7 @@ export function LoginForm() {
               <p className="sigap-hero-subtitle">{SIGAP_FULL_NAME}</p>
             </div>
             <p className="auth-hero-desc">
-              Pelaporan temuan HSE, tindak lanjut lapangan, dan approval terpusat untuk seluruh
+              Pelaporan temuan EHS, tindak lanjut lapangan, dan approval terpusat untuk seluruh
               perusahaan.
             </p>
           </div>

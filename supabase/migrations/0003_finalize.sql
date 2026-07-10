@@ -1,4 +1,4 @@
--- Finalisasi SIGAP HSE: kolom baru, RLS per perusahaan, laporan bulanan.
+-- Finalisasi SIGAP EHS: kolom baru, RLS per perusahaan, laporan bulanan.
 -- Jalankan setelah 0001_init.sql dan 0002_seed.sql.
 
 alter table findings
@@ -35,7 +35,7 @@ create policy "findings_insert_own" on findings for insert with check (
   auth.uid() = created_by
 );
 
-drop policy if exists "findings_update_hse_role" on findings;
+drop policy if exists "findings_update_EHS_role" on findings;
 drop policy if exists "findings_update_own_progress" on findings;
 drop policy if exists "findings_update_admin" on findings;
 

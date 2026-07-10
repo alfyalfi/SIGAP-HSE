@@ -12,35 +12,35 @@ const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500"], variab
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
   title: {
-    default: "SIGAP HSE",
-    template: "%s | SIGAP HSE",
+    default: "SIGAP EHS",
+    template: "%s | SIGAP EHS",
   },
   description:
-    "Sistem Informasi Guna Audit dan Penyelesaian - pelaporan dan tindak lanjut temuan HSE.",
-  applicationName: "SIGAP HSE",
-  keywords: ["SIGAP HSE", "HSE", "K3", "temuan", "pelaporan", "tindak lanjut", "audit", "safety"],
+    "Sistem Informasi Guna Audit dan Penyelesaian - pelaporan dan tindak lanjut temuan EHS.",
+  applicationName: "SIGAP EHS",
+  keywords: ["SIGAP EHS", "EHS", "K3", "temuan", "pelaporan", "tindak lanjut", "audit", "safety"],
   robots: { index: false, follow: false },
   openGraph: {
     type: "website",
     locale: "id_ID",
-    siteName: "SIGAP HSE",
-    title: "SIGAP HSE",
+    siteName: "SIGAP EHS",
+    title: "SIGAP EHS",
     description:
-      "Sistem informasi untuk pelaporan, review, dan penyelesaian temuan HSE dalam satu alur yang rapi.",
+      "Sistem informasi untuk pelaporan, review, dan penyelesaian temuan EHS dalam satu alur yang rapi.",
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "SIGAP HSE",
+        alt: "SIGAP EHS",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "SIGAP HSE",
+    title: "SIGAP EHS",
     description:
-      "Sistem informasi untuk pelaporan, review, dan penyelesaian temuan HSE dalam satu alur yang rapi.",
+      "Sistem informasi untuk pelaporan, review, dan penyelesaian temuan EHS dalam satu alur yang rapi.",
     images: ["/twitter-image"],
   },
   icons: {
@@ -50,7 +50,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    title: "SIGAP HSE",
+    title: "SIGAP EHS",
     statusBarStyle: "default",
   },
 };

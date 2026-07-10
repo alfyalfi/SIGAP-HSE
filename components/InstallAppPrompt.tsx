@@ -74,9 +74,9 @@ export function InstallAppPrompt() {
   const hasNativePrompt = Boolean(deferredPrompt);
 
   return (
-    <div className="install-app-banner" role="dialog" aria-live="polite" aria-label="Install aplikasi SIGAP HSE">
+    <div className="install-app-banner" role="dialog" aria-live="polite" aria-label="Install aplikasi SIGAP EHS">
       <div>
-        <div className="install-app-title">Pasang SIGAP HSE</div>
+        <div className="install-app-title">Pasang SIGAP EHS</div>
         <div className="install-app-subtitle">
           {hasNativePrompt
             ? "Buka sebagai aplikasi penuh layar di perangkat mobile untuk akses yang lebih cepat dan konsisten."

@@ -47,6 +47,17 @@ export const STATUS_DESCRIPTIONS: Record<string, string> = {
   rejected: "Ditolak Admin",
 };
 
+export const STATUS_COLORS = {
+  open: "#EF4444",
+  progress: "#FBBF24",
+  closed: "#22C55E",
+  rejected: "#C2410C",
+} as const;
+
+export function getStatusColor(status: keyof typeof STATUS_COLORS | string) {
+  return STATUS_COLORS[status as keyof typeof STATUS_COLORS] || STATUS_COLORS.open;
+}
+
 export function formatDateTime(iso?: string | null) {
   if (!iso) return "-";
   return new Date(iso).toLocaleString("id-ID", {

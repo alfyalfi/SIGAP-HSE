@@ -1,4 +1,4 @@
-# Panduan Debug Developer SIGAP HSE
+# Panduan Debug Developer SIGAP EHS
 
 Dokumen ini dipakai saat aplikasi terasa lambat, muncul error, atau data foto tidak tampil semestinya.
 
@@ -103,7 +103,7 @@ Saat mendapat laporan dari user:
 
 Rujukan resmi: [Supabase Pricing](https://supabase.com/pricing)
 
-Ringkasan limit free tier yang relevan untuk SIGAP HSE:
+Ringkasan limit free tier yang relevan untuk SIGAP EHS:
 
 - `500 MB` database size
 - `1 GB` file storage

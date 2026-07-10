@@ -1,4 +1,4 @@
-# Panduan Ubah PIN Admin — SIGAP HSE
+# Panduan Ubah PIN Admin — SIGAP EHS
 
 PIN admin disimpan **hanya di server**, bukan di database Supabase. Aplikasi membacanya dari variabel environment `SIGAP_ADMIN_PIN`.
 
@@ -44,7 +44,7 @@ npm run dev
 
 ## 2. Ubah PIN di Vercel (production)
 
-1. Login [vercel.com](https://vercel.com) → pilih project **SIGAP-HSE**
+1. Login [vercel.com](https://vercel.com) → pilih project **SIGAP-EHS**
 2. **Settings** → **Environment Variables**
 3. Cari `SIGAP_ADMIN_PIN` → klik **Edit** (atau **Add** jika belum ada)
 4. Isi PIN baru (6–8 digit angka)
@@ -88,4 +88,4 @@ Tanpa redeploy, PIN lama masih dipakai di server production.
 
 ---
 
-*SIGAP HSE v1.0 — Panduan PIN Admin*
+*SIGAP EHS v1.0 — Panduan PIN Admin*

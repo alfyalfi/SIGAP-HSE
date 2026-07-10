@@ -19,6 +19,7 @@ import {
 import {
   STATUS_DESCRIPTIONS,
   STATUS_LABELS,
+  getStatusColor,
   formatDateTime,
 } from "@/lib/constants";
 import type { Finding, Profile } from "@/lib/queries";
@@ -85,33 +86,57 @@ function matchesSearch(f: Finding, q: string, profiles: Profile[]) {
   return hay.includes(q.toLowerCase());
 }
 
-function buildMonthlyTrend(findings: Finding[]) {
-  const months: string[] = [];
+function buildTrendPeriod(mode: "monthly" | "weekly") {
   const now = new Date();
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push(
-      d.toLocaleDateString("id-ID", { month: "short", year: "2-digit" })
-    );
+  const labels: string[] = [];
+  const ranges: Array<{ start: Date; end: Date }> = [];
+
+  if (mode === "weekly") {
+    for (let i = 3; i >= 0; i--) {
+      const start = new Date(now);
+      start.setDate(now.getDate() - (i + 1) * 7 + 1);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      end.setHours(23, 59, 59, 999);
+      labels.push(`M${4 - i}`);
+      ranges.push({ start, end });
+    }
+    return { labels, ranges };
   }
-  const newCounts = months.map((_, idx) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - (5 - idx), 1);
-    const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
-    return findings.filter((f) => {
-      const dt = new Date(f.foundDatetime || f.foundAt);
-      return dt >= d && dt <= end;
-    }).length;
-  });
-  const closedCounts = months.map((_, idx) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - (5 - idx), 1);
-    const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
-    return findings.filter((f) => {
-      if (f.status !== "closed" || !f.resolvedDatetime) return false;
-      const dt = new Date(f.resolvedDatetime);
-      return dt >= d && dt <= end;
-    }).length;
-  });
-  return { labels: months, newCounts, closedCounts };
+
+  for (let i = 5; i >= 0; i--) {
+    const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const end = new Date(start.getFullYear(), start.getMonth() + 1, 0, 23, 59, 59, 999);
+    labels.push(start.toLocaleDateString("id-ID", { month: "short", year: "2-digit" }));
+    ranges.push({ start, end });
+  }
+
+  return { labels, ranges };
+}
+
+function countTrendSeries(findings: Finding[], mode: "monthly" | "weekly") {
+  const { labels, ranges } = buildTrendPeriod(mode);
+  const openCounts = ranges.map(({ start, end }) =>
+    findings.filter((finding) => {
+      if (finding.status !== "open") return false;
+      const foundAt = new Date(finding.foundDatetime || finding.foundAt);
+      return foundAt >= start && foundAt <= end;
+    }).length
+  );
+  const closedCounts = ranges.map(({ start, end }) =>
+    findings.filter((finding) => {
+      if (finding.status !== "closed" || !finding.resolvedDatetime) return false;
+      const resolvedAt = new Date(finding.resolvedDatetime);
+      return resolvedAt >= start && resolvedAt <= end;
+    }).length
+  );
+  return { labels, openCounts, closedCounts };
+}
+
+function formatLegendShare(count: number, total: number) {
+  if (!total) return "0%";
+  return `${Math.round((count / total) * 100)}%`;
 }
 
 const CHART_COLORS = [
@@ -212,7 +237,7 @@ export function AdminDashboard({
       if (f.status === "closed") {
         items.push({
           id: `${f.id}-closed`,
-          who: "Admin HSE",
+          who: "Admin EHS",
           action: "menyetujui temuan",
           ref: f.code,
           time: formatDateTime(f.resolvedDatetime || f.createdAt),
@@ -223,7 +248,7 @@ export function AdminDashboard({
       if (f.status === "rejected") {
         items.push({
           id: `${f.id}-rejected`,
-          who: "Admin HSE",
+          who: "Admin EHS",
           action: "menolak temuan",
           ref: f.code,
           time: formatDateTime(f.createdAt),
@@ -257,33 +282,26 @@ export function AdminDashboard({
     if (!trendRef.current) return;
     trendChart.current?.destroy();
 
-    const { labels, newCounts, closedCounts } = buildMonthlyTrend(findings);
-    const weeklyLabels = ["M1", "M2", "M3", "M4"];
-    const weeklyNew = weeklyLabels.map((_, i) =>
-      Math.max(0, Math.round(newCounts[newCounts.length - 1] * (0.6 + i * 0.15)))
-    );
-    const weeklyClosed = weeklyLabels.map((_, i) =>
-      Math.max(0, Math.round(closedCounts[closedCounts.length - 1] * (0.5 + i * 0.12)))
-    );
+    const { labels, openCounts, closedCounts } = countTrendSeries(findings, trendMode);
 
     trendChart.current = new Chart(trendRef.current, {
       type: "line",
       data: {
-        labels: trendMode === "monthly" ? labels : weeklyLabels,
+        labels,
         datasets: [
           {
-            label: "Temuan Baru",
-            data: trendMode === "monthly" ? newCounts : weeklyNew,
-            borderColor: "#FF8A3D",
-            backgroundColor: "rgba(255, 138, 61, 0.12)",
+            label: "Open",
+            data: openCounts,
+            borderColor: getStatusColor("open"),
+            backgroundColor: `${getStatusColor("open")}22`,
             tension: 0.35,
             fill: true,
           },
           {
-            label: "Diselesaikan",
-            data: trendMode === "monthly" ? closedCounts : weeklyClosed,
-            borderColor: "#22C55E",
-            backgroundColor: "rgba(34, 197, 94, 0.1)",
+            label: "Close",
+            data: closedCounts,
+            borderColor: getStatusColor("closed"),
+            backgroundColor: `${getStatusColor("closed")}22`,
             tension: 0.35,
             fill: true,
           },
@@ -292,7 +310,17 @@ export function AdminDashboard({
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { position: "bottom" } },
+          plugins: {
+            legend: { position: "bottom" },
+            tooltip: {
+              callbacks: {
+                label(context) {
+                  const value = Number(context.raw || 0);
+                  return `${context.dataset.label}: ${value}`;
+                },
+              },
+            },
+          },
         scales: {
           y: { beginAtZero: true, ticks: { stepSize: 1 } },
         },
@@ -325,7 +353,19 @@ export function AdminDashboard({
         responsive: true,
         maintainAspectRatio: false,
         cutout: "62%",
-        plugins: { legend: { display: false } },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label(context) {
+                const count = Number(context.raw || 0);
+                const total = data.reduce((sum, value) => sum + value, 0);
+                const share = total ? Math.round((count / total) * 100) : 0;
+                return `${context.label}: ${count} (${share}%)`;
+              },
+            },
+          },
+        },
       },
     });
 
@@ -425,7 +465,7 @@ export function AdminDashboard({
         <div className="admin-panel">
           <div className="admin-panel-head">
             <div>
-              <div className="admin-panel-title">Tren Temuan vs Penyelesaian</div>
+              <div className="admin-panel-title">Tren Open vs Close</div>
               <div className="admin-panel-sub">6 bulan terakhir</div>
             </div>
             <div className="admin-seg">
@@ -468,7 +508,9 @@ export function AdminDashboard({
                   style={{ background: CHART_COLORS[i % CHART_COLORS.length] }}
                 />
                 <span className="admin-legend-name">{name}</span>
-                <span className="admin-legend-val">{count}</span>
+                <span className="admin-legend-val">
+                  {count} ({formatLegendShare(count, stats.total)})
+                </span>
               </div>
             ))}
           </div>

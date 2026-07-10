@@ -383,10 +383,10 @@
   height: 100%;
 }
 .admin-kpi-card.total::before { background: var(--accent-blue); }
-.admin-kpi-card.open::before { background: var(--accent-red); }
-.admin-kpi-card.progress::before { background: var(--accent-yellow); }
-.admin-kpi-card.closed::before { background: var(--accent-green); }
-.admin-kpi-card.rejected::before { background: var(--accent-red); opacity: 0.6; }
+.admin-kpi-card.open::before { background: var(--status-open); }
+.admin-kpi-card.progress::before { background: var(--status-progress); }
+.admin-kpi-card.closed::before { background: var(--status-closed); }
+.admin-kpi-card.rejected::before { background: var(--status-rejected); opacity: 0.8; }
 .admin-kpi-card.active {
   border-color: var(--accent-orange);
   box-shadow: 0 0 0 2px rgba(255, 138, 61, 0.15);
@@ -704,25 +704,25 @@
   color: var(--accent-red);
   border-color: rgba(239, 68, 68, 0.2);
 }
-.admin-badge.open::before { background: var(--accent-red); }
+.admin-badge.open::before { background: var(--status-open); }
 .admin-badge.progress {
   background: rgba(251, 191, 36, 0.12);
   color: var(--accent-yellow);
   border-color: rgba(251, 191, 36, 0.25);
 }
-.admin-badge.progress::before { background: var(--accent-yellow); }
+.admin-badge.progress::before { background: var(--status-progress); }
 .admin-badge.closed {
   background: rgba(34, 197, 94, 0.12);
   color: var(--accent-green);
   border-color: rgba(34, 197, 94, 0.25);
 }
-.admin-badge.closed::before { background: var(--accent-green); }
+.admin-badge.closed::before { background: var(--status-closed); }
 .admin-badge.rejected {
   background: rgba(239, 68, 68, 0.08);
   color: var(--accent-red);
   border-color: rgba(239, 68, 68, 0.15);
 }
-.admin-badge.rejected::before { background: var(--accent-red); }
+.admin-badge.rejected::before { background: var(--status-rejected); }
 
 .admin-pic-cell {
   display: flex;

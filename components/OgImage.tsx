@@ -10,7 +10,7 @@ type OgImageProps = {
   footer?: string;
 };
 
-export function OgImage({ title, subtitle, kicker = "SIGAP HSE", footer = "Sistem pelaporan dan tindak lanjut temuan K3" }: OgImageProps) {
+export function OgImage({ title, subtitle, kicker = "SIGAP EHS", footer = "Sistem pelaporan dan tindak lanjut temuan K3" }: OgImageProps) {
   const companyCount = COMPANIES.length;
 
   return (
@@ -111,7 +111,7 @@ export function OgImage({ title, subtitle, kicker = "SIGAP HSE", footer = "Siste
             >
               <img
                 src={logo.src}
-                alt="SIGAP HSE"
+                alt="SIGAP EHS"
                 width={66}
                 height={66}
                 style={{ display: "block", objectFit: "contain" }}
@@ -277,7 +277,7 @@ export function OgImage({ title, subtitle, kicker = "SIGAP HSE", footer = "Siste
       >
         <div>{footer}</div>
         <div style={{ fontFamily: "JetBrains Mono, Consolas, monospace", fontSize: 16 }}>
-          SIGAP HSE • SHARE READY
+          SIGAP EHS • SHARE READY
         </div>
       </div>
     </div>

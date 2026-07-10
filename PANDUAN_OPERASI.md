@@ -1,4 +1,4 @@
-# Panduan Operasi — SIGAP HSE v1
+# Panduan Operasi — SIGAP EHS v1
 
 ## Login
 
@@ -113,4 +113,4 @@ npm run dev
 
 ---
 
-*SIGAP HSE — Panduan Operasi v1.0*
+*SIGAP EHS — Panduan Operasi v1.0*

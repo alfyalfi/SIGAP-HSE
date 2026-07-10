@@ -21,7 +21,7 @@ export default function GlobalError({
           color: "#f8fafc",
         }}
       >
-        <h1>SIGAP HSE - Kesalahan Sistem</h1>
+        <h1>SIGAP EHS - Kesalahan Sistem</h1>
         <p style={{ color: "#94a3b8", marginBottom: 24 }}>
           {formatErrorMessage(error, "Terjadi kesalahan yang tidak terduga.", "SYS")}
         </p>

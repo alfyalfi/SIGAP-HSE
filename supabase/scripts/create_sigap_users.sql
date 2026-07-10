@@ -1,5 +1,5 @@
 -- =============================================================================
--- SIGAP HSE — Buat 13 user Auth sekaligus
+-- SIGAP EHS — Buat 13 user Auth sekaligus
 -- Jalankan di: Supabase Dashboard → SQL Editor → New query → Run
 --
 -- Prasyarat: migration 0005 (kolom is_active) sudah dijalankan.

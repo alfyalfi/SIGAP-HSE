@@ -171,7 +171,7 @@ export function buildCategoryBreakdown(rows: FindingExportRow[]) {
     .map(([name, count]) => ({ name, count }));
 }
 
-export function buildExportContext(findings: Finding[], profiles: Profile[], filters: ExportFilters, title = "SIGAP HSE Laporan"): ExportContext {
+export function buildExportContext(findings: Finding[], profiles: Profile[], filters: ExportFilters, title = "SIGAP EHS Laporan"): ExportContext {
   const rows = buildFindingExportRows(findings, profiles);
   return {
     title,
@@ -542,7 +542,7 @@ export async function buildProfessionalJpgBlob(title: string, context: ExportCon
   ctx.font = '700 46px "Times New Roman"';
   ctx.fillText(title, 76, 92);
   ctx.font = '400 18px Arial';
-  ctx.fillText(`SIGAP HSE export snapshot | ${formatDateTime(context.generatedAt)}`, 76, 126);
+  ctx.fillText(`SIGAP EHS export snapshot | ${formatDateTime(context.generatedAt)}`, 76, 126);
   ctx.font = '700 12px Arial';
   ctx.fillStyle = "#E5E7EB";
   ctx.fillText(`Filter: Status ${context.filters.status || "Semua"}  |  Area ${context.filters.area || "Semua"}  |  Kategori ${context.filters.category || "Semua"}  |  Perusahaan ${context.filters.company || "Semua"}`, 76, 152);
@@ -721,8 +721,8 @@ function addStatusConditionalFormatting(sheet: Worksheet, statusColumnLetter: st
 
 export async function buildProfessionalXlsxBlob(context: ExportContext) {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = "SIGAP HSE";
-  workbook.lastModifiedBy = "SIGAP HSE";
+  workbook.creator = "SIGAP EHS";
+  workbook.lastModifiedBy = "SIGAP EHS";
   workbook.created = new Date(context.generatedAt);
   workbook.modified = new Date();
   workbook.calcProperties.fullCalcOnLoad = true;

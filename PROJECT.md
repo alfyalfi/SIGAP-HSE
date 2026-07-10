@@ -1,4 +1,4 @@
-# SIGAP HSE — Ringkasan Arsitektur
+# SIGAP EHS — Ringkasan Arsitektur
 
 ## Versi
 

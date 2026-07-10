@@ -1,4 +1,4 @@
--- SIGAP HSE — initial schema & RLS
+-- SIGAP EHS — initial schema & RLS
 -- Jalankan file ini di Supabase SQL editor, atau via `supabase db push` jika pakai Supabase CLI.
 
 create extension if not exists "pgcrypto";
@@ -17,7 +17,7 @@ create table if not exists categories (
 create table if not exists profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text,
-  role text check (role in ('admin','hse_officer','field_staff','viewer')) default 'field_staff',
+  role text check (role in ('admin','EHS_officer','field_staff','viewer')) default 'field_staff',
   created_at timestamptz default now()
 );
 
@@ -25,7 +25,7 @@ create sequence if not exists findings_code_seq start 1;
 
 create table if not exists findings (
   id uuid primary key default gen_random_uuid(),
-  code text unique not null default ('HSE-' || lpad(nextval('findings_code_seq')::text, 4, '0')),
+  code text unique not null default ('EHS-' || lpad(nextval('findings_code_seq')::text, 4, '0')),
   found_at date not null default current_date,
   area_id uuid references areas(id),
   location_detail text,
@@ -114,8 +114,8 @@ create policy "profiles_update_own" on profiles for update using (auth.uid() = i
 -- findings
 create policy "findings_read" on findings for select using (auth.role() = 'authenticated');
 create policy "findings_insert_own" on findings for insert with check (auth.uid() = created_by);
-create policy "findings_update_hse_role" on findings for update using (
-  exists (select 1 from profiles p where p.id = auth.uid() and p.role in ('admin','hse_officer'))
+create policy "findings_update_EHS_role" on findings for update using (
+  exists (select 1 from profiles p where p.id = auth.uid() and p.role in ('admin','EHS_officer'))
 );
 create policy "findings_delete_admin" on findings for delete using (
   exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'admin')
@@ -124,8 +124,8 @@ create policy "findings_delete_admin" on findings for delete using (
 -- finding_photos
 create policy "photos_read" on finding_photos for select using (auth.role() = 'authenticated');
 create policy "photos_insert_own" on finding_photos for insert with check (auth.uid() = uploaded_by);
-create policy "photos_delete_hse_role" on finding_photos for delete using (
-  exists (select 1 from profiles p where p.id = auth.uid() and p.role in ('admin','hse_officer'))
+create policy "photos_delete_EHS_role" on finding_photos for delete using (
+  exists (select 1 from profiles p where p.id = auth.uid() and p.role in ('admin','EHS_officer'))
 );
 
 -- activity_log

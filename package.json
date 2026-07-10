@@ -1,8 +1,8 @@
 {
-  "name": "sigap-hse",
+  "name": "sigap-EHS",
   "version": "1.0.0",
   "private": true,
-  "description": "SIGAP HSE — Sistem Informasi Guna Audit dan Penyelesaian temuan K3",
+  "description": "SIGAP EHS — Sistem Informasi Guna Audit dan Penyelesaian temuan K3",
   "engines": {
     "node": ">=18.18.0"
   },

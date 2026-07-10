@@ -13,6 +13,10 @@
   --accent-green: #22C55E;
   --accent-red: #EF4444;
   --accent-yellow: #FBBF24;
+  --status-open: #EF4444;
+  --status-progress: #FBBF24;
+  --status-closed: #22C55E;
+  --status-rejected: #C2410C;
   --pill-active-bg: #14151A;
   --pill-active-text: #FFFFFF;
   --radius-card: 20px;
@@ -36,6 +40,10 @@
   --accent-green: #3DDC84;
   --accent-red: #FF5A5F;
   --accent-yellow: #FFC845;
+  --status-open: #FF5A5F;
+  --status-progress: #FFC845;
+  --status-closed: #3DDC84;
+  --status-rejected: #FF8A5B;
   --pill-active-bg: #F1F2F6;
   --pill-active-text: #14161A;
   --shadow-card: 0 4px 24px rgba(0,0,0,0.35);
@@ -750,10 +758,10 @@ input[readonly] { background: var(--surface-2); color: var(--text-secondary); cu
 }
 .kpi-card p { font-size: 11px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 700; }
 .kpi-card strong { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 27px; line-height: 1; }
-.kpi-open strong { color: var(--accent-red); }
-.kpi-progress strong { color: var(--accent-yellow); }
-.kpi-closed strong { color: var(--accent-green); }
-.kpi-rejected strong { color: #c2410c; }
+.kpi-open strong { color: var(--status-open); }
+.kpi-progress strong { color: var(--status-progress); }
+.kpi-closed strong { color: var(--status-closed); }
+.kpi-rejected strong { color: var(--status-rejected); }
 
 .dashboard-intro {
   display: flex;
@@ -1049,10 +1057,10 @@ tbody tr:last-child td { border-bottom: none; }
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-.status-open { background: rgba(239,68,68,0.12); color: var(--accent-red); }
-.status-progress { background: rgba(251,191,36,0.16); color: var(--accent-yellow); }
-.status-closed { background: rgba(34,197,94,0.12); color: var(--accent-green); }
-.status-rejected { background: rgba(194,65,12,0.12); color: #c2410c; }
+.status-open { background: rgba(239,68,68,0.12); color: var(--status-open); }
+.status-progress { background: rgba(251,191,36,0.16); color: var(--status-progress); }
+.status-closed { background: rgba(34,197,94,0.12); color: var(--status-closed); }
+.status-rejected { background: rgba(194,65,12,0.12); color: var(--status-rejected); }
 .status-pending { background: rgba(59,130,246,0.12); color: var(--accent-blue); }
 
 /* ===== Monthly ===== */

@@ -516,7 +516,7 @@ export function AdminMasterPic({
                     </button>
                     <div style={{ minWidth: 0 }}>
                       <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>
-                        Klik preview untuk full view. PNG transparan akan mengikuti background UI.
+                        Klik preview untuk full view.
                       </div>
                       <div className="muted" style={{ fontSize: 12 }}>
                         {logoFile?.name || (editing?.logoPath ? "Display picture tersimpan" : "Belum ada file dipilih")}
@@ -532,14 +532,14 @@ export function AdminMasterPic({
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="nama@perusahaan.com"
+                        placeholder="nama-pic@sigap.com"
                       />
                     </div>
                     <div className="admin-field full">
                       <label>Peran</label>
                       <select value={role} onChange={(e) => setRole(e.target.value)}>
                         <option value="field_staff">PIC Lapangan</option>
-                        <option value="hse_officer">HSE Officer</option>
+                        <option value="EHS_officer">EHS Officer</option>
                         <option value="viewer">Viewer</option>
                       </select>
                     </div>
@@ -580,7 +580,7 @@ export function AdminMasterPic({
       <AdminPinModal
         open={Boolean(deleteTarget)}
         title="Hapus PIC?"
-        message={`PIC ${deleteTarget?.full_name || "-"} akan dinonaktifkan dan logo lama dihapus dari storage. Masukkan PIN admin untuk melanjutkan.`}
+        message={`PIC ${deleteTarget?.full_name || "-"} akan dihapus permanen dari storage. Tindakan ini tidak dapat dibatalkan.Masukkan PIN admin untuk melanjutkan.`}
         confirmLabel="Hapus PIC"
         busy={busy}
         onClose={() => setDeleteTarget(null)}

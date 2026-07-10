@@ -84,7 +84,7 @@ const VIEW_ICONS: Record<AdminView, () => React.ReactElement> = {
 const DEFAULT_TITLES: Record<AdminView, { title: string; sub: string }> = {
   dashboard: {
     title: "Dashboard Utama",
-    sub: "Ringkasan temuan HSE - diperbarui otomatis setiap laporan baru masuk",
+    sub: "Ringkasan temuan EHS - Klik segarkan untuk memuat data terbaru",
   },
   temuan: {
     title: "Daftar Temuan",
@@ -96,7 +96,7 @@ const DEFAULT_TITLES: Record<AdminView, { title: string; sub: string }> = {
   },
   laporan: {
     title: "Pusat Laporan",
-    sub: "Generator dan riwayat ekspor dokumen HSE",
+    sub: "Generator dan riwayat ekspor dokumen EHS",
   },
   pic: {
     title: "Master Data PIC",
@@ -144,7 +144,7 @@ export function AdminShell({
   const syncLabel = syncing
     ? "Sinkronisasi sedang berjalan"
     : lastSyncedAt
-      ? `Live up to date - last sync ${formatDateTime(lastSyncedAt.toISOString())}`
+      ? `Live - last sync ${formatDateTime(lastSyncedAt.toISOString())}`
       : "Status sistem siap - menunggu sinkronisasi pertama";
 
   function navigate(view: AdminView) {

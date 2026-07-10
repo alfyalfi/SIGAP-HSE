@@ -35,6 +35,7 @@ import {
   getFindingExportHeaders,
   type ExportFilters,
 } from "@/lib/report-export";
+import { getStatusColor } from "@/lib/constants";
 
 Chart.register(
   CategoryScale,
@@ -99,6 +100,19 @@ function getMetricValue(finding: Finding, metric: ChartMetric | TimeMetric) {
 
 function getTimeMetricLabel(metric: TimeMetric) {
   return TIME_METRIC_OPTIONS.find((option) => option.value === metric)?.label ?? metric;
+}
+
+function getTrendMetricColor(metric: TimeMetric, index: number) {
+  if (metric === "open") return getStatusColor("open");
+  if (metric === "closed") return getStatusColor("closed");
+  if (metric === "progress") return getStatusColor("progress");
+  if (metric === "rejected") return getStatusColor("rejected");
+  return CHART_COLORS[index % CHART_COLORS.length];
+}
+
+function formatShare(value: number, total: number) {
+  if (!total) return "0%";
+  return `${Math.round((value / total) * 100)}%`;
 }
 
 function buildSeries(findings: Finding[], mode: "monthly" | "weekly", metric: TimeMetric) {
@@ -264,7 +278,7 @@ export function AdminAnalytics({ findings, profiles }: AdminAnalyticsProps) {
     [filteredFindings, profiles]
   );
   const exportContext = useMemo(
-    () => buildExportContext(filteredFindings, profiles, dateFilters as ExportFilters, "SIGAP HSE Analisis"),
+    () => buildExportContext(filteredFindings, profiles, dateFilters as ExportFilters, "SIGAP EHS Analisis"),
     [filteredFindings, profiles, dateFilters]
   );
 
@@ -333,7 +347,7 @@ export function AdminAnalytics({ findings, profiles }: AdminAnalyticsProps) {
           data: {
             labels: trendLabels,
             datasets: trendSeries.map((series, index) => {
-              const color = CHART_COLORS[index % CHART_COLORS.length];
+              const color = getTrendMetricColor(series.metric, index);
               return {
                 label: getTimeMetricLabel(series.metric),
                 data: series.data,
@@ -347,7 +361,16 @@ export function AdminAnalytics({ findings, profiles }: AdminAnalyticsProps) {
           options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { position: "bottom" } },
+            plugins: {
+              legend: { position: "bottom" },
+              tooltip: {
+                callbacks: {
+                  label(context) {
+                    return `${context.dataset.label}: ${context.raw}`;
+                  },
+                },
+              },
+            },
             scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
           },
         })
@@ -372,7 +395,18 @@ export function AdminAnalytics({ findings, profiles }: AdminAnalyticsProps) {
             responsive: true,
             maintainAspectRatio: false,
             cutout: "60%",
-            plugins: { legend: { display: false } },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label(context) {
+                    const count = Number(context.raw || 0);
+                    const total = categoryBreakdown.reduce((sum, [, value]) => sum + value, 0);
+                    return `${context.label}: ${count} (${formatShare(count, total)})`;
+                  },
+                },
+              },
+            },
           },
         })
       );
@@ -418,7 +452,7 @@ export function AdminAnalytics({ findings, profiles }: AdminAnalyticsProps) {
         downloadBlobFile(await buildProfessionalXlsxBlob(exportContext), `${baseName}.xlsx`);
       } else if (exportFormat === "docx") {
         const docx = buildDocxBlob(
-          "SIGAP HSE Analisis",
+          "SIGAP EHS Analisis",
           [
             `Rentang tanggal: ${dateFrom || "-"} s/d ${dateTo || "-"}`,
             `Tren aktif: ${trendMetrics.map(getTimeMetricLabel).join(", ")}`,
@@ -432,7 +466,7 @@ export function AdminAnalytics({ findings, profiles }: AdminAnalyticsProps) {
         downloadBlobFile(docx, `${baseName}.docx`);
       } else if (exportFormat === "pdf") {
         const opened = openPrintablePdf(
-          "SIGAP HSE Analisis",
+          "SIGAP EHS Analisis",
           `Rentang ${dateFrom || "-"} s/d ${dateTo || "-"} | Tren ${trendMetrics
             .map(getTimeMetricLabel)
             .join(" vs ")}`,
@@ -447,7 +481,7 @@ export function AdminAnalytics({ findings, profiles }: AdminAnalyticsProps) {
           console.error(displayErrorMessage(null, "Browser menolak membuka jendela cetak.", "REPORT"));
         }
       } else if (exportFormat === "jpg") {
-        downloadBlobFile(await buildProfessionalJpgBlob("SIGAP HSE Analisis", exportContext), `${baseName}.jpg`);
+        downloadBlobFile(await buildProfessionalJpgBlob("SIGAP EHS Analisis", exportContext), `${baseName}.jpg`);
       }
     } catch (error) {
       console.error(displayErrorMessage(error, "Gagal mengekspor analisis", "REPORT"));
@@ -641,7 +675,7 @@ export function AdminAnalytics({ findings, profiles }: AdminAnalyticsProps) {
               <div key={name} className="admin-legend-row">
                 <span className="admin-legend-dot" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
                 <span className="admin-legend-name">{name}</span>
-                <span className="admin-legend-val">{count}</span>
+                <span className="admin-legend-val">{count} ({formatShare(count, filteredFindings.length)})</span>
               </div>
             ))}
           </div>
@@ -753,7 +787,7 @@ export function AdminAnalytics({ findings, profiles }: AdminAnalyticsProps) {
       <div ref={presentationRef} className="admin-presentation-mode">
         <div className="admin-topbar">
           <div>
-            <div className="admin-page-title">SIGAP HSE - Analisis Kinerja</div>
+            <div className="admin-page-title">SIGAP EHS - Analisis Kinerja</div>
             <div className="admin-page-sub">Mode presentasi untuk review manajemen</div>
           </div>
           <button type="button" className="admin-btn" onClick={togglePresentation}>

@@ -1,4 +1,4 @@
-# SIGAP HSE
+# SIGAP EHS
 
 **Sistem Informasi Guna Audit dan Penyelesaian** — aplikasi pelaporan dan tindak lanjut temuan Health, Safety & Environment.
 
@@ -114,4 +114,4 @@ Kalau deploy bukan di Vercel, tetap bisa pakai endpoint yang sama dari scheduler
 
 ---
 
-*SIGAP HSE v1.0*
+*SIGAP EHS v1.0*
