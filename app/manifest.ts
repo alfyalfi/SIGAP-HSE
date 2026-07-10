@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "SIGAP EHS",
-    short_name: "SIGAP EHS",
-    description: "Sistem Informasi Guna Audit dan Penyelesaian temuan EHS.",
+    name: "SIGAP",
+    short_name: "SIGAP",
+    description: "Sistem Informasi Guna Analisa dan Pelaporan temuan EHS.",
     start_url: "/",
     scope: "/",
     display: "standalone",

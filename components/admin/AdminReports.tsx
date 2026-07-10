@@ -283,7 +283,7 @@ export function AdminReports({ findings, profiles, reports, onDeleteReports }: A
     const maxCount = Math.max(1, ...context.categoryBreakdown.map((item) => item.count));
 
     return `
-      <h1>SIGAP EHS - Laporan Export</h1>
+      <h1>SIGAP - Laporan Export</h1>
       <p class="muted">Format: ${xmlEscape(exportFormat.toUpperCase())} | Filtered rows: ${context.rows.length} | Diekspor: ${escapeHtml(
         formatDateTime(new Date().toISOString())
       )}</p>
@@ -339,7 +339,7 @@ export function AdminReports({ findings, profiles, reports, onDeleteReports }: A
     setExporting(true);
     try {
       const rows = filteredFindings;
-      const title = "SIGAP EHS Laporan";
+      const title = "SIGAP Laporan";
       const dateStamp = new Date().toISOString().slice(0, 10);
       const baseName = `sigap-laporan-${dateStamp}-${exportFormat}`;
       const exportContext = buildExportContext(rows, profiles, exportFilters, title);

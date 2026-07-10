@@ -10,7 +10,7 @@ type OgImageProps = {
   footer?: string;
 };
 
-export function OgImage({ title, subtitle, kicker = "SIGAP EHS", footer = "Sistem pelaporan dan tindak lanjut temuan K3" }: OgImageProps) {
+export function OgImage({ title, subtitle, kicker = "SIGAP", footer = SIGAP_FULL_NAME }: OgImageProps) {
   const companyCount = COMPANIES.length;
 
   return (
@@ -111,7 +111,7 @@ export function OgImage({ title, subtitle, kicker = "SIGAP EHS", footer = "Siste
             >
               <img
                 src={logo.src}
-                alt="SIGAP EHS"
+                alt="SIGAP"
                 width={66}
                 height={66}
                 style={{ display: "block", objectFit: "contain" }}
@@ -277,7 +277,7 @@ export function OgImage({ title, subtitle, kicker = "SIGAP EHS", footer = "Siste
       >
         <div>{footer}</div>
         <div style={{ fontFamily: "JetBrains Mono, Consolas, monospace", fontSize: 16 }}>
-          SIGAP EHS • SHARE READY
+          SIGAP • SHARE READY
         </div>
       </div>
     </div>
@@ -375,3 +375,4 @@ const badgeStyle: CSSProperties = {
   fontWeight: 800,
   whiteSpace: "nowrap",
 };
+

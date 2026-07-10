@@ -8,7 +8,7 @@ export default function AppLoading() {
       <div className="page-loading-shell">
         <div className="page-loading">
           <div className="page-loading-spinner" />
-          <div className="muted">Memuat halaman SIGAP EHS...</div>
+          <div className="muted">Memuat halaman SIGAP...</div>
         </div>
         <div className="page-loading-hero">
           <SkeletonBlock className="skeleton-title" />

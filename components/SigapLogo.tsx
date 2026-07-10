@@ -18,7 +18,7 @@ export function SigapLogo({ size = "md", className = "", priority }: SigapLogoPr
   return (
     <Image
       src="/logo.png"
-      alt="SIGAP EHS"
+      alt="SIGAP"
       width={px}
       height={px}
       className={`sigap-logo sigap-logo-${size}${className ? ` ${className}` : ""}`}

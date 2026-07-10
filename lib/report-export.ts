@@ -5,7 +5,7 @@ import ExcelJS, {
   type ContainsTextRuleType,
   type Worksheet,
 } from "exceljs";
-import { formatDateTime, STATUS_LABELS } from "@/lib/constants";
+import { formatDate, formatDateTime, STATUS_LABELS } from "@/lib/constants";
 import type { Finding, Profile } from "@/lib/queries";
 
 export type ExportFilters = {
@@ -171,7 +171,7 @@ export function buildCategoryBreakdown(rows: FindingExportRow[]) {
     .map(([name, count]) => ({ name, count }));
 }
 
-export function buildExportContext(findings: Finding[], profiles: Profile[], filters: ExportFilters, title = "SIGAP EHS Laporan"): ExportContext {
+export function buildExportContext(findings: Finding[], profiles: Profile[], filters: ExportFilters, title = "SIGAP Laporan"): ExportContext {
   const rows = buildFindingExportRows(findings, profiles);
   return {
     title,
@@ -542,7 +542,7 @@ export async function buildProfessionalJpgBlob(title: string, context: ExportCon
   ctx.font = '700 46px "Times New Roman"';
   ctx.fillText(title, 76, 92);
   ctx.font = '400 18px Arial';
-  ctx.fillText(`SIGAP EHS export snapshot | ${formatDateTime(context.generatedAt)}`, 76, 126);
+  ctx.fillText(`SIGAP export snapshot | ${formatDateTime(context.generatedAt)}`, 76, 126);
   ctx.font = '700 12px Arial';
   ctx.fillStyle = "#E5E7EB";
   ctx.fillText(`Filter: Status ${context.filters.status || "Semua"}  |  Area ${context.filters.area || "Semua"}  |  Kategori ${context.filters.category || "Semua"}  |  Perusahaan ${context.filters.company || "Semua"}`, 76, 152);
@@ -592,6 +592,258 @@ export async function buildProfessionalJpgBlob(title: string, context: ExportCon
       if (!value) reject(new Error("Gagal membuat JPG."));
       else resolve(value);
     }, "image/jpeg", 0.95);
+  });
+  return blob;
+}
+
+function drawWrappedText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number,
+  maxLines = 999
+) {
+  const lines = wrapText(ctx, text, maxWidth).slice(0, maxLines);
+  lines.forEach((line, index) => {
+    ctx.fillText(line, x, y + index * lineHeight);
+  });
+  return lines.length * lineHeight;
+}
+
+function drawDetailCard(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  title: string,
+  subtitle = ""
+) {
+  drawRoundedRect(ctx, x, y, w, h, 24);
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fill();
+  ctx.strokeStyle = "#E5E7EB";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = "#111827";
+  ctx.font = '700 24px "Times New Roman"';
+  ctx.fillText(title, x + 24, y + 36);
+  if (subtitle) {
+    ctx.fillStyle = "#6B7280";
+    ctx.font = '400 14px Arial';
+    ctx.fillText(subtitle, x + 24, y + 60);
+  }
+}
+
+function drawDetailField(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  label: string,
+  value: string
+) {
+  ctx.fillStyle = "#6B7280";
+  ctx.font = '700 12px Arial';
+  ctx.fillText(label, x, y);
+  ctx.fillStyle = "#111827";
+  ctx.font = '700 16px "Times New Roman"';
+  drawWrappedText(ctx, value, x, y + 24, w, 20, 3);
+}
+
+function loadCanvasImage(url: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error(`Gagal memuat gambar: ${url}`));
+    img.src = url;
+  });
+}
+
+function drawPhotoFrame(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  label: string,
+  image?: HTMLImageElement | null
+) {
+  drawRoundedRect(ctx, x, y, w, h, 18);
+  ctx.fillStyle = "#F9FAFB";
+  ctx.fill();
+  ctx.strokeStyle = "#E5E7EB";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.fillStyle = "#111827";
+  ctx.font = '700 12px Arial';
+  ctx.fillText(label, x + 16, y + 22);
+
+  const innerX = x + 12;
+  const innerY = y + 34;
+  const innerW = w - 24;
+  const innerH = h - 46;
+
+  if (!image) {
+    ctx.fillStyle = "#9CA3AF";
+    ctx.font = '400 13px Arial';
+    ctx.fillText("Tidak ada foto", x + 16, y + h / 2);
+    return;
+  }
+
+  const ratio = Math.min(innerW / image.width, innerH / image.height);
+  const drawW = image.width * ratio;
+  const drawH = image.height * ratio;
+  const offsetX = innerX + (innerW - drawW) / 2;
+  const offsetY = innerY + (innerH - drawH) / 2;
+  ctx.drawImage(image, offsetX, offsetY, drawW, drawH);
+}
+
+export async function buildFindingDetailJpgBlob(finding: Finding, picName: string) {
+  const canvas = ensureCanvas();
+  canvas.width = 1800;
+  canvas.height = 2480;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas context tidak tersedia.");
+
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+
+  ctx.fillStyle = "#F4F5F9";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = "#111827";
+  drawRoundedRect(ctx, 40, 36, 1720, 132, 28);
+  ctx.fill();
+  ctx.fillStyle = "#FBBF24";
+  drawRoundedRect(ctx, 40, 160, 1720, 8, 999);
+  ctx.fill();
+
+  ctx.fillStyle = "#FFFFFF";
+  ctx.font = '700 44px "Times New Roman"';
+  ctx.fillText("Detail Temuan", 76, 92);
+  ctx.font = '400 18px Arial';
+  ctx.fillText(`Snapshot JPG tinggi | ${formatDateTime(new Date().toISOString())}`, 76, 126);
+  ctx.font = '700 12px Arial';
+  ctx.fillStyle = "#E5E7EB";
+  ctx.fillText(`Kode ${finding.code}  |  PIC ${picName}  |  Status ${STATUS_LABELS[finding.status] || finding.status}`, 76, 152);
+
+  drawDetailCard(
+    ctx,
+    40,
+    210,
+    1720,
+    220,
+    "Informasi Temuan",
+    "Ringkasan data utama yang tersimpan pada detail temuan"
+  );
+  drawDetailField(ctx, 64, 286, 360, "Kode", finding.code);
+  drawDetailField(ctx, 430, 286, 360, "Tanggal Temuan", formatDate(finding.foundDatetime || finding.foundAt));
+  drawDetailField(ctx, 796, 286, 360, "Perusahaan", finding.companyName || "-");
+  drawDetailField(ctx, 1162, 286, 360, "PIC", picName || "PIC");
+  drawDetailField(ctx, 64, 376, 360, "Area / Lokasi", finding.areaName || "-");
+  drawDetailField(ctx, 430, 376, 360, "Kategori", finding.categoryName || "-");
+  drawDetailField(ctx, 796, 376, 360, "Status", STATUS_LABELS[finding.status] || finding.status);
+  drawDetailField(ctx, 1162, 376, 360, "TIKOR", finding.tikor || "-");
+
+  drawDetailCard(ctx, 40, 454, 1720, 300, "Deskripsi Temuan", "Keterangan awal dari PIC");
+  ctx.fillStyle = "#111827";
+  ctx.font = '700 16px Arial';
+  ctx.fillText("Deskripsi Utama", 64, 512);
+  ctx.fillStyle = "#374151";
+  ctx.font = '400 15px Arial';
+  drawWrappedText(ctx, finding.photoDescription || "Tidak ada deskripsi yang dicatat.", 64, 540, 1600, 22, 5);
+  if (finding.afterDescription) {
+    ctx.fillStyle = "#111827";
+    ctx.font = '700 16px Arial';
+    ctx.fillText("Deskripsi Tindak Lanjut", 64, 640);
+    ctx.fillStyle = "#374151";
+    ctx.font = '400 15px Arial';
+    drawWrappedText(ctx, finding.afterDescription, 64, 668, 1600, 22, 4);
+  }
+
+  const beforePhotos = finding.photos.filter((photo) => photo.stage === "before").slice(0, 2);
+  const afterPhotos = finding.photos.filter((photo) => photo.stage === "after").slice(0, 2);
+  const beforeImages = await Promise.all(beforePhotos.map((photo) => loadCanvasImage(photo.publicUrl).catch(() => null)));
+  const afterImages = await Promise.all(afterPhotos.map((photo) => loadCanvasImage(photo.publicUrl).catch(() => null)));
+
+  drawDetailCard(ctx, 40, 778, 1720, 790, "Foto Temuan", "Tampilan before dan after yang disusun untuk snapshot detail");
+  ctx.fillStyle = "#111827";
+  ctx.font = '700 16px Arial';
+  ctx.fillText("Before", 64, 836);
+  ctx.fillText("After", 910, 836);
+  const frameW = 812;
+  const frameH = 260;
+  drawPhotoFrame(ctx, 64, 854, frameW, frameH, "Before #1", beforeImages[0] || null);
+  drawPhotoFrame(ctx, 64, 1132, frameW, frameH, "Before #2", beforeImages[1] || null);
+  drawPhotoFrame(ctx, 910, 854, frameW, frameH, "After #1", afterImages[0] || null);
+  drawPhotoFrame(ctx, 910, 1132, frameW, frameH, "After #2", afterImages[1] || null);
+
+  drawDetailCard(ctx, 40, 1590, 1720, 470, "Timeline Tindak Lanjut", "Urutan status tanpa menampilkan jam");
+  const timelineItems = [
+    {
+      label: "Temuan dilaporkan",
+      date: formatDate(finding.foundDatetime || finding.foundAt),
+      color: "#3B82F6",
+    },
+    ...(finding.status !== "open"
+      ? [
+          {
+            label: STATUS_LABELS.progress,
+            date: formatDate(finding.resolvedDatetime || finding.foundDatetime || finding.foundAt),
+            color: "#FBBF24",
+          },
+        ]
+      : []),
+    ...(finding.status === "closed"
+      ? [
+          {
+            label: STATUS_LABELS.closed,
+            date: formatDate(finding.resolvedDatetime),
+            color: "#22C55E",
+          },
+        ]
+      : []),
+    ...(finding.status === "rejected"
+      ? [
+          {
+            label: STATUS_LABELS.rejected,
+            date: formatDate(finding.createdAt),
+            color: "#EF4444",
+          },
+        ]
+      : []),
+  ];
+
+  timelineItems.forEach((item, index) => {
+    const y = 1652 + index * 88;
+    ctx.fillStyle = item.color;
+    ctx.beginPath();
+    ctx.arc(74, y, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#D1D5DB";
+    ctx.fillRect(72, y + 8, 4, 58);
+    ctx.fillStyle = "#111827";
+    ctx.font = '700 17px "Times New Roman"';
+    ctx.fillText(item.label, 98, y + 4);
+    ctx.fillStyle = "#6B7280";
+    ctx.font = '400 15px Arial';
+    ctx.fillText(item.date, 98, y + 28);
+  });
+
+  ctx.fillStyle = "#6B7280";
+  ctx.font = '400 12px Arial';
+  ctx.fillText("Snapshot detail temuan diambil dari data sistem SIGAP.", 40, 2410);
+
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((value) => {
+      if (!value) reject(new Error("Gagal membuat JPG detail temuan."));
+      else resolve(value);
+    }, "image/jpeg", 0.96);
   });
   return blob;
 }
@@ -721,8 +973,8 @@ function addStatusConditionalFormatting(sheet: Worksheet, statusColumnLetter: st
 
 export async function buildProfessionalXlsxBlob(context: ExportContext) {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = "SIGAP EHS";
-  workbook.lastModifiedBy = "SIGAP EHS";
+  workbook.creator = "SIGAP";
+  workbook.lastModifiedBy = "SIGAP";
   workbook.created = new Date(context.generatedAt);
   workbook.modified = new Date();
   workbook.calcProperties.fullCalcOnLoad = true;

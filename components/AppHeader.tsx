@@ -33,16 +33,16 @@ export function AppHeader({ profile }: { profile: Profile }) {
   }
 
   const subtitle =
-    USER_NAV.find((n) => pathname.startsWith(n.href))?.label || "SIGAP EHS";
+    USER_NAV.find((n) => pathname.startsWith(n.href))?.label || "SIGAP";
 
   return (
     <header className="app-header">
       <div className="header-brand">
-        <Link href="/form" className="header-brand-link" aria-label="SIGAP EHS">
+        <Link href="/form" className="header-brand-link" aria-label="SIGAP">
           <SigapLogo size="sm" />
         </Link>
         <div>
-          <strong>SIGAP EHS</strong>
+          <strong>SIGAP</strong>
           <p>{subtitle}</p>
           {profile.full_name && (
             <p className="hero-greeting">{getGreeting(profile.full_name)}</p>

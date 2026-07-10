@@ -279,7 +279,7 @@ export function AdminAnalytics({ findings, profiles }: AdminAnalyticsProps) {
     [filteredFindings, profiles]
   );
   const exportContext = useMemo(
-    () => buildExportContext(filteredFindings, profiles, dateFilters as ExportFilters, "SIGAP EHS Analisis"),
+    () => buildExportContext(filteredFindings, profiles, dateFilters as ExportFilters, "SIGAP Analisis"),
     [filteredFindings, profiles, dateFilters]
   );
 
@@ -453,7 +453,7 @@ export function AdminAnalytics({ findings, profiles }: AdminAnalyticsProps) {
         downloadBlobFile(await buildProfessionalXlsxBlob(exportContext), `${baseName}.xlsx`);
       } else if (exportFormat === "docx") {
         const docx = buildDocxBlob(
-          "SIGAP EHS Analisis",
+          "SIGAP Analisis",
           [
             `Rentang tanggal: ${dateFrom || "-"} s/d ${dateTo || "-"}`,
             `Tren aktif: ${trendMetrics.map(getTimeMetricLabel).join(", ")}`,
@@ -467,7 +467,7 @@ export function AdminAnalytics({ findings, profiles }: AdminAnalyticsProps) {
         downloadBlobFile(docx, `${baseName}.docx`);
       } else if (exportFormat === "pdf") {
         const opened = openPrintablePdf(
-          "SIGAP EHS Analisis",
+          "SIGAP Analisis",
           `Rentang ${dateFrom || "-"} s/d ${dateTo || "-"} | Tren ${trendMetrics
             .map(getTimeMetricLabel)
             .join(" vs ")}`,
@@ -482,7 +482,7 @@ export function AdminAnalytics({ findings, profiles }: AdminAnalyticsProps) {
           console.error(displayErrorMessage(null, "Browser menolak membuka jendela cetak.", "REPORT"));
         }
       } else if (exportFormat === "jpg") {
-        downloadBlobFile(await buildProfessionalJpgBlob("SIGAP EHS Analisis", exportContext), `${baseName}.jpg`);
+        downloadBlobFile(await buildProfessionalJpgBlob("SIGAP Analisis", exportContext), `${baseName}.jpg`);
       }
     } catch (error) {
       console.error(displayErrorMessage(error, "Gagal mengekspor analisis", "REPORT"));
@@ -788,7 +788,7 @@ export function AdminAnalytics({ findings, profiles }: AdminAnalyticsProps) {
       <div ref={presentationRef} className="admin-presentation-mode">
         <div className="admin-topbar">
           <div>
-            <div className="admin-page-title">SIGAP EHS - Analisis Kinerja</div>
+            <div className="admin-page-title">SIGAP - Analisis Kinerja</div>
             <div className="admin-page-sub">Mode presentasi untuk review manajemen</div>
           </div>
           <button type="button" className="admin-btn" onClick={togglePresentation}>

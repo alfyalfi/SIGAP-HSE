@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { STATUS_DESCRIPTIONS, formatDateTime } from "@/lib/constants";
+import { STATUS_DESCRIPTIONS, formatDate, formatDateTime } from "@/lib/constants";
 import type { Finding, Profile } from "@/lib/queries";
 import { AdminPinModal } from "./AdminPinModal";
 import { AdminStatusBadge } from "./AdminStatusBadge";
+import { downloadBlobFile } from "@/lib/export-utils";
+import { buildFindingDetailJpgBlob } from "@/lib/report-export";
 
 type AdminFindingDetailProps = {
   finding: Finding | null;
@@ -76,12 +78,27 @@ export function AdminFindingDetail({
   const [activePhoto, setActivePhoto] = useState<Finding["photos"][number] | null>(null);
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [rejectNote, setRejectNote] = useState("");
+  const [downloadingJpg, setDownloadingJpg] = useState(false);
 
   if (!open || !finding) return null;
 
   const findingId = finding.id;
   const pic = profileName(profiles, finding.createdBy);
   const canReview = finding.status === "progress";
+
+  async function handleDownloadJpg() {
+    if (downloadingJpg) return;
+    const currentFinding = finding;
+    if (!currentFinding) return;
+    setDownloadingJpg(true);
+    try {
+      const blob = await buildFindingDetailJpgBlob(currentFinding, pic);
+      const safeCode = currentFinding.code.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase();
+      downloadBlobFile(blob, `detail-temuan-${safeCode || currentFinding.id}.jpg`);
+    } finally {
+      setDownloadingJpg(false);
+    }
+  }
 
   async function handleApprove() {
     if (!onApprove || busy || loading) return;
@@ -126,14 +143,14 @@ export function AdminFindingDetail({
   const timeline = [
     {
       label: "Temuan dilaporkan",
-      time: formatDateTime(finding.createdAt),
+      date: formatDate(finding.foundDatetime || finding.foundAt),
       color: "var(--accent-blue)",
     },
     ...(finding.status !== "open"
       ? [
           {
             label: STATUS_DESCRIPTIONS.progress,
-            time: formatDateTime(finding.resolvedDatetime || finding.createdAt),
+            date: formatDate(finding.resolvedDatetime || finding.foundDatetime || finding.foundAt),
             color: "var(--accent-yellow)",
           },
         ]
@@ -142,7 +159,7 @@ export function AdminFindingDetail({
       ? [
           {
             label: STATUS_DESCRIPTIONS.closed,
-            time: formatDateTime(finding.resolvedDatetime),
+            date: formatDate(finding.resolvedDatetime),
             color: "var(--accent-green)",
           },
         ]
@@ -151,7 +168,7 @@ export function AdminFindingDetail({
       ? [
           {
             label: STATUS_DESCRIPTIONS.rejected,
-            time: formatDateTime(finding.createdAt),
+            date: formatDate(finding.createdAt),
             color: "var(--accent-red)",
           },
         ]
@@ -167,9 +184,19 @@ export function AdminFindingDetail({
               <div className="admin-modal-title mono">{finding.code}</div>
               <AdminStatusBadge status={finding.status} />
             </div>
-            <button type="button" className="admin-modal-close" onClick={onClose}>
-              ×
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button
+                type="button"
+                className="admin-btn admin-btn-sm admin-btn-primary"
+                onClick={handleDownloadJpg}
+                disabled={downloadingJpg}
+              >
+                {downloadingJpg ? "Menyiapkan JPG..." : "Download JPG"}
+              </button>
+              <button type="button" className="admin-modal-close" onClick={onClose}>
+                ×
+              </button>
+            </div>
           </div>
 
           <div className="admin-detail-grid">
@@ -345,7 +372,7 @@ export function AdminFindingDetail({
                     <div className="admin-timeline-dot" style={{ background: item.color }} />
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 600 }}>{item.label}</div>
-                      <div className="mono admin-timeline-time">{item.time}</div>
+                      <div className="admin-timeline-time">{item.date}</div>
                     </div>
                   </div>
                 ))}

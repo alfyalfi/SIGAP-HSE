@@ -25,7 +25,7 @@ async function exportXlsx(
   profiles: Profile[],
   filters: { status: string; area: string; category: string; company: string; dateFrom: string; dateTo: string }
 ) {
-  const context = buildExportContext(rows, profiles, filters, "SIGAP EHS Daftar Temuan");
+  const context = buildExportContext(rows, profiles, filters, "SIGAP Daftar Temuan");
   const blob = await buildProfessionalXlsxBlob(context);
   downloadBlobFile(blob, `${slugifyFileName(`sigap-temuan-${new Date().toISOString().slice(0, 10)}`)}.xlsx`);
 }

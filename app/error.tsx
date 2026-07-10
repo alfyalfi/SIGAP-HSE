@@ -20,7 +20,7 @@ export default function Error({
     <div className="auth-screen active">
       <div className="auth-wrap" style={{ gridTemplateColumns: "1fr", maxWidth: 480 }}>
         <div className="auth-card card">
-          <span className="eyebrow">SIGAP EHS</span>
+          <span className="eyebrow">SIGAP</span>
           <h1 style={{ marginTop: 8, marginBottom: 8 }}>Terjadi Kesalahan</h1>
           <p className="muted" style={{ marginBottom: 20 }}>
             {formatErrorMessage(error, "Aplikasi mengalami gangguan. Silakan coba lagi atau kembali ke halaman login.", "APP")}
