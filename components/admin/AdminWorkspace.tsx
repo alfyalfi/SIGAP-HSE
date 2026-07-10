@@ -1,14 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { AdminShell, type AdminView } from "./AdminShell";
-import { AdminDashboard } from "./AdminDashboard";
-import { AdminFindingsList } from "./AdminFindingsList";
-import { AdminAnalytics } from "./AdminAnalytics";
-import { AdminReports } from "./AdminReports";
-import { AdminMasterPic } from "./AdminMasterPic";
-import { AdminFindingDetail } from "./AdminFindingDetail";
 import { createClient } from "@/lib/supabase/client";
 import {
   approveFinding,
@@ -20,6 +15,26 @@ import {
   type Profile,
 } from "@/lib/queries";
 import { displayErrorMessage } from "@/lib/errors";
+
+const AdminDashboard = dynamic(() => import("./AdminDashboard").then((mod) => mod.AdminDashboard), {
+  loading: () => <div className="admin-panel"><div className="admin-empty">Memuat dashboard...</div></div>,
+});
+const AdminFindingsList = dynamic(() => import("./AdminFindingsList").then((mod) => mod.AdminFindingsList), {
+  loading: () => <div className="admin-panel"><div className="admin-empty">Memuat daftar temuan...</div></div>,
+});
+const AdminAnalytics = dynamic(() => import("./AdminAnalytics").then((mod) => mod.AdminAnalytics), {
+  loading: () => <div className="admin-panel"><div className="admin-empty">Memuat analisis...</div></div>,
+});
+const AdminReports = dynamic(() => import("./AdminReports").then((mod) => mod.AdminReports), {
+  loading: () => <div className="admin-panel"><div className="admin-empty">Memuat laporan...</div></div>,
+});
+const AdminMasterPic = dynamic(() => import("./AdminMasterPic").then((mod) => mod.AdminMasterPic), {
+  loading: () => <div className="admin-panel"><div className="admin-empty">Memuat master PIC...</div></div>,
+});
+const AdminFindingDetail = dynamic(
+  () => import("./AdminFindingDetail").then((mod) => mod.AdminFindingDetail),
+  { ssr: false }
+);
 
 type AdminWorkspaceProps = {
   initialFindings: Finding[];
@@ -33,7 +48,7 @@ export function AdminWorkspace({
   initialReports,
 }: AdminWorkspaceProps) {
   const router = useRouter();
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
   const [view, setView] = useState<AdminView>("dashboard");
   const [findings, setFindings] = useState(initialFindings);
   const [profiles, setProfiles] = useState(initialProfiles);
@@ -47,6 +62,7 @@ export function AdminWorkspace({
   const [syncing, setSyncing] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState(() => new Date());
   const detailRequestRef = useRef(0);
+  const [, startTransition] = useTransition();
 
   useEffect(() => {
     setFindings(initialFindings);
@@ -123,7 +139,29 @@ export function AdminWorkspace({
 
   async function handlePicEdit(id: string, payload: { full_name: string; logoPath?: string | null }) {
     const updated = await updateProfile(supabase, id, payload);
+    const nextName = updated.full_name || payload.full_name;
     setProfiles((prev) => prev.map((p) => (p.id === id ? { ...p, ...updated } : p)));
+    setFindings((prev) =>
+      prev.map((finding) =>
+        finding.createdBy === id
+          ? {
+              ...finding,
+              companyName: nextName,
+            }
+          : finding
+      )
+    );
+    setReports((prev) =>
+      prev.map((report) =>
+        report.uploadedBy === id
+          ? {
+              ...report,
+              companyName: nextName,
+            }
+          : report
+      )
+    );
+    return updated;
   }
 
   async function handlePicAdd(payload: { full_name: string; email: string; role: string; pin: string }) {
@@ -183,7 +221,7 @@ export function AdminWorkspace({
     <>
       <AdminShell
         activeView={view}
-        onNavigate={setView}
+        onNavigate={(nextView) => startTransition(() => setView(nextView))}
         onRefresh={refresh}
         findingsCount={findings.length}
         lastSyncedAt={lastSyncedAt}
@@ -213,9 +251,7 @@ export function AdminWorkspace({
             onNavigate={setView}
           />
         )}
-        {view === "temuan" && (
-          <AdminFindingsList {...dataProps} onViewFinding={openFinding} />
-        )}
+        {view === "temuan" && <AdminFindingsList {...dataProps} onViewFinding={openFinding} />}
         {view === "analisis" && <AdminAnalytics {...dataProps} />}
         {view === "laporan" && (
           <AdminReports {...dataProps} reports={reports} onDeleteReports={handleDeleteMonthlyReports} />

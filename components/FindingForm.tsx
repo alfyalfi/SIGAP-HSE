@@ -1,7 +1,6 @@
 "use client";
 
-import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Stepper } from "./Stepper";
 import { createClient } from "@/lib/supabase/client";
@@ -9,6 +8,8 @@ import { createFinding, uploadFindingPhoto } from "@/lib/queries";
 import { compressImage } from "@/lib/compress";
 import { withTimeout } from "@/lib/async-utils";
 import { displayErrorMessage } from "@/lib/errors";
+import { MediaSourceMenu } from "./MediaSourceMenu";
+import { ImageLightbox } from "./ImageLightbox";
 import {
   FINDING_CATEGORIES,
   formatDateTime,
@@ -34,6 +35,34 @@ export function FindingForm({ companyName }: { companyName: string }) {
   const [photoDescription, setPhotoDescription] = useState("");
   const [beforePhoto, setBeforePhoto] = useState<File | null>(null);
   const [preview, setPreview] = useState("");
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (preview.startsWith("blob:")) {
+        URL.revokeObjectURL(preview);
+      }
+    };
+  }, [preview]);
+
+  function applyBeforePhoto(file: File | null) {
+    if (!file) return;
+    setBeforePhoto(file);
+    setPreview((prev) => {
+      if (prev.startsWith("blob:")) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+  }
+
+  function triggerCameraInput() {
+    cameraInputRef.current?.click();
+  }
+
+  function triggerGalleryInput() {
+    galleryInputRef.current?.click();
+  }
 
   function validate(s: number) {
     if (s === 1 && (!foundDatetime || !title.trim() || !areaText.trim() || !categoryText)) {
@@ -171,36 +200,48 @@ export function FindingForm({ companyName }: { companyName: string }) {
 
         {step === 2 && (
           <>
-            <label className="upload-card">
-              <span>Foto Temuan (Before)</span>
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) {
-                    setBeforePhoto(f);
-                    setPreview(URL.createObjectURL(f));
-                  }
-                }}
-                required
-              />
-              <small>Foto dikompresi otomatis sebelum upload.</small>
-            </label>
+            <MediaSourceMenu
+              label="Foto Temuan (Before)"
+              mainLabel="Upload Before"
+              cameraLabel="Buka Kamera"
+              galleryLabel="Buka Galeri"
+              helperText="Pilih kamera untuk foto baru, atau galeri untuk file yang sudah ada."
+              onMainClick={triggerGalleryInput}
+              onCameraClick={triggerCameraInput}
+              onGalleryClick={triggerGalleryInput}
+            />
+            <input
+              ref={cameraInputRef}
+              className="visually-hidden-file"
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => {
+                applyBeforePhoto(e.target.files?.[0] || null);
+                e.currentTarget.value = "";
+              }}
+            />
+            <input
+              ref={galleryInputRef}
+              className="visually-hidden-file"
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                applyBeforePhoto(e.target.files?.[0] || null);
+                e.currentTarget.value = "";
+              }}
+            />
             {preview && (
               <div className="photo-preview">
-                <div className="photo-preview-item">
-                  <Image
-                    src={preview}
-                    alt="preview"
-                    width={1200}
-                    height={900}
-                    unoptimized
-                    style={{ width: "100%", height: "auto" }}
-                  />
+                <button
+                  type="button"
+                  className="photo-preview-item photo-preview-item-button"
+                  onClick={() => setPreviewOpen(true)}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={preview} alt="preview before" />
                   <div>{beforePhoto?.name}</div>
-                </div>
+                </button>
               </div>
             )}
             <label className="full-span">
@@ -291,6 +332,15 @@ export function FindingForm({ companyName }: { companyName: string }) {
           </div>
         </div>
       )}
+
+      <ImageLightbox
+        open={previewOpen}
+        src={preview}
+        alt="Preview foto before"
+        title="Foto Before"
+        subtitle={beforePhoto?.name || "Preview foto temuan"}
+        onClose={() => setPreviewOpen(false)}
+      />
 
       {toast && <div className="toast toast-error">{toast}</div>}
     </>

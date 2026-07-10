@@ -136,7 +136,7 @@ async function exportSummaryJpg(title: string, context: ExportContext) {
 }
 
 export function AdminReports({ findings, profiles, reports, onDeleteReports }: AdminReportsProps) {
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
   const [exportLog, setExportLog] = useState<ExportLog[]>([]);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [exportFormat, setExportFormat] = useState<ExportFormat>("xlsx");

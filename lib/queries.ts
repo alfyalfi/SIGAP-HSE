@@ -244,6 +244,32 @@ export async function updateProfile(
   if (typeof payload.is_active === "boolean") dbPayload.is_active = payload.is_active;
   if (payload.logoPath !== undefined) dbPayload.logo_path = payload.logoPath;
 
+  const nextFullName =
+    typeof payload.full_name === "string" && payload.full_name.trim()
+      ? payload.full_name.trim()
+      : null;
+
+  async function syncRenamedCollections(fullName: string) {
+    const findingsResult = await client
+      .from("findings")
+      .update({
+        company_name: fullName,
+        department: fullName,
+      })
+      .eq("created_by", id);
+    if (findingsResult.error && !isUndefinedColumnError(findingsResult.error)) {
+      throw findingsResult.error;
+    }
+
+    const reportsResult = await client
+      .from("monthly_reports")
+      .update({ company_name: fullName })
+      .eq("uploaded_by", id);
+    if (reportsResult.error && !isUndefinedColumnError(reportsResult.error)) {
+      throw reportsResult.error;
+    }
+  }
+
   type ProfileRow = {
     id: string;
     full_name: string | null;
@@ -277,6 +303,10 @@ export async function updateProfile(
     ({ data, error } = await tryUpdateProfile(false));
   }
   if (error) throw error;
+
+  if (nextFullName) {
+    await syncRenamedCollections(nextFullName);
+  }
   return normalizeProfile(client, data as unknown as Record<string, unknown>);
 }
 

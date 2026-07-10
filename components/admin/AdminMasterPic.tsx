@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Finding, Profile } from "@/lib/queries";
 import type { AdminDataProps } from "./AdminDashboard";
 import { MobileRecordCard } from "../MobileRecordCard";
@@ -9,6 +9,9 @@ import { createClient } from "@/lib/supabase/client";
 import { compressImage } from "@/lib/compress";
 import { PROFILE_LOGO_BUCKET } from "@/lib/queries";
 import { displayErrorMessage } from "@/lib/errors";
+import { MediaSourceMenu } from "../MediaSourceMenu";
+import { ImageLightbox } from "../ImageLightbox";
+import { assertImageWithinLimit } from "@/lib/image";
 
 type PicRow = Profile & {
   total: number;
@@ -35,7 +38,7 @@ type AdminMasterPicProps = AdminDataProps & {
   onPicEdit?: (
     id: string,
     payload: { full_name: string; logoPath?: string | null }
-  ) => void | Promise<void>;
+  ) => Promise<Profile | void> | Profile | void;
   onPicDelete?: (id: string, pin: string) => void | Promise<void>;
 };
 
@@ -66,7 +69,7 @@ export function AdminMasterPic({
   onPicEdit,
   onPicDelete,
 }: AdminMasterPicProps) {
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
   const [localProfiles, setLocalProfiles] = useState(profiles);
 
   useEffect(() => {
@@ -80,10 +83,21 @@ export function AdminMasterPic({
   const [role, setRole] = useState("field_staff");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState("");
+  const [logoViewer, setLogoViewer] = useState<{ src: string; title: string } | null>(null);
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Profile | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (logoPreview.startsWith("blob:")) {
+        URL.revokeObjectURL(logoPreview);
+      }
+    };
+  }, [logoPreview]);
 
   const rows = useMemo(() => buildPicRows(findings, localProfiles), [findings, localProfiles]);
 
@@ -102,9 +116,40 @@ export function AdminMasterPic({
     setRole("field_staff");
     setLogoFile(null);
     setLogoPreview("");
+    setLogoViewer(null);
     setPin("");
     setError("");
     setBusy(false);
+  }
+
+  function setPreviewFromFile(file: File | null) {
+    if (!file) return;
+    void (async () => {
+      try {
+        await assertImageWithinLimit(file, 7680);
+        setLogoFile(file);
+        setLogoPreview((prev) => {
+          if (prev.startsWith("blob:")) URL.revokeObjectURL(prev);
+          return URL.createObjectURL(file);
+        });
+        setError("");
+      } catch (err) {
+        const message = displayErrorMessage(err, "Ukuran foto terlalu besar.", "ADMIN");
+        setError(message);
+      }
+    })();
+  }
+
+  function openLogoPicker(source: "camera" | "gallery") {
+    if (source === "camera") {
+      cameraInputRef.current?.click();
+      return;
+    }
+    galleryInputRef.current?.click();
+  }
+
+  function openLogoViewer(src: string, title: string) {
+    setLogoViewer({ src, title });
   }
 
   function openAdd() {
@@ -131,11 +176,11 @@ export function AdminMasterPic({
     setModalOpen(true);
   }
 
-  async function uploadLogo(currentLogoPath: string | null) {
-    if (!logoFile || !editing) return currentLogoPath;
+  async function uploadLogo(profileId: string, currentLogoPath: string | null) {
+    if (!logoFile) return currentLogoPath;
 
     const blob = await compressImage(logoFile);
-    const nextPath = `${editing.id}/logo-${Date.now()}.webp`;
+    const nextPath = `${profileId}/logo-${Date.now()}.webp`;
     const { error: uploadError } = await supabase.storage
       .from(PROFILE_LOGO_BUCKET)
       .upload(nextPath, blob, { contentType: "image/webp", upsert: false });
@@ -160,7 +205,24 @@ export function AdminMasterPic({
         pin,
       });
       if (created && "id" in created) {
-        setLocalProfiles((prev) => [created, ...prev.filter((p) => p.id !== created.id)]);
+        let merged = created;
+        if (logoFile) {
+          const logoPath = await uploadLogo(created.id, created.logoPath || null);
+          const synced = (await onPicEdit?.(created.id, {
+            full_name: created.full_name || name.trim(),
+            logoPath,
+          })) as Profile | void;
+          merged = {
+            ...created,
+            ...(synced || {}),
+            full_name: (synced && synced.full_name) || created.full_name || name.trim(),
+            logoPath,
+            logoUrl: logoPath
+              ? supabase.storage.from(PROFILE_LOGO_BUCKET).getPublicUrl(logoPath).data.publicUrl
+              : null,
+          };
+        }
+        setLocalProfiles((prev) => [merged, ...prev.filter((p) => p.id !== merged.id)]);
       }
       resetModalState();
     } catch (err) {
@@ -176,7 +238,7 @@ export function AdminMasterPic({
     setError("");
     try {
       let logoPath = editing.logoPath || null;
-      logoPath = await uploadLogo(logoPath);
+      logoPath = await uploadLogo(editing.id, logoPath);
 
       const updated = (await onPicEdit?.(editing.id, {
         full_name: name.trim(),
@@ -323,14 +385,21 @@ export function AdminMasterPic({
                   <tr key={r.id} style={{ cursor: "default" }}>
                     <td>
                       <div className="admin-pic-cell">
-                        <span className="admin-pic-avatar">
-                          {r.logoUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
+                        {r.logoUrl ? (
+                          <button
+                            type="button"
+                            className="admin-pic-avatar"
+                            onClick={() => openLogoViewer(r.logoUrl || "", r.full_name || "PIC")}
+                            title="Klik untuk lihat full view"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={r.logoUrl} alt={r.full_name || "PIC"} />
-                          ) : (
+                          </button>
+                        ) : (
+                          <span className="admin-pic-avatar">
                             <span>{(r.full_name || "P").slice(0, 2).toUpperCase()}</span>
-                          )}
-                        </span>
+                          </span>
+                        )}
                         {r.full_name || "-"}
                       </div>
                     </td>
@@ -399,6 +468,64 @@ export function AdminMasterPic({
                     placeholder="Nama penanggung jawab"
                   />
                 </div>
+                <div className="admin-field full">
+                  <MediaSourceMenu
+                    label="Display Picture PIC"
+                    mainLabel="Upload Picture"
+                    cameraLabel="Ambil dari Kamera"
+                    galleryLabel="Ambil dari Galeri"
+                    helperText="Format PNG, JPG, JPEG, WEBP, GIF, AVIF, HEIC, atau HEIF. Maksimal 7680 × 7680 px."
+                    onMainClick={() => openLogoPicker("gallery")}
+                    onCameraClick={() => openLogoPicker("camera")}
+                    onGalleryClick={() => openLogoPicker("gallery")}
+                  />
+                  <input
+                    ref={cameraInputRef}
+                    className="visually-hidden-file"
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={(e) => {
+                      setPreviewFromFile(e.target.files?.[0] || null);
+                      e.currentTarget.value = "";
+                    }}
+                  />
+                  <input
+                    ref={galleryInputRef}
+                    className="visually-hidden-file"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      setPreviewFromFile(e.target.files?.[0] || null);
+                      e.currentTarget.value = "";
+                    }}
+                  />
+                  <div style={{ display: "flex", gap: 14, alignItems: "center", marginTop: 8 }}>
+                    <button
+                      type="button"
+                      className="admin-pic-logo-preview"
+                      onClick={() => {
+                        if (logoPreview) openLogoViewer(logoPreview, editing ? "Preview Display Picture" : "Preview Display Picture");
+                      }}
+                      disabled={!logoPreview}
+                    >
+                      {logoPreview ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={logoPreview} alt="Preview display picture" />
+                      ) : (
+                        <span className="muted">Logo</span>
+                      )}
+                    </button>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>
+                        Klik preview untuk full view. PNG transparan akan mengikuti background UI.
+                      </div>
+                      <div className="muted" style={{ fontSize: 12 }}>
+                        {logoFile?.name || (editing?.logoPath ? "Display picture tersimpan" : "Belum ada file dipilih")}
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 {!editing && (
                   <>
                     <div className="admin-field full">
@@ -430,38 +557,6 @@ export function AdminMasterPic({
                     </div>
                   </>
                 )}
-                {editing && (
-                  <div className="admin-field full">
-                    <label>Logo PIC</label>
-                    <div className="admin-form-grid" style={{ gridTemplateColumns: "auto 1fr", alignItems: "center" }}>
-                      <div className="admin-pic-logo-preview">
-                        {logoPreview ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={logoPreview} alt="Logo PIC" />
-                        ) : (
-                          <span className="muted">Logo</span>
-                        )}
-                      </div>
-                      <div>
-                        <input
-                          type="file"
-                          accept="image/png,image/jpeg,image/jpg,image/webp"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0] || null;
-                            setLogoFile(file);
-                            if (file) {
-                              const preview = URL.createObjectURL(file);
-                              setLogoPreview(preview);
-                            }
-                          }}
-                        />
-                        <p className="muted" style={{ marginTop: 6, fontSize: 12 }}>
-                          JPG, PNG, atau WEBP akan dikompresi otomatis agar tetap ringan.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
               {error && (
                 <p style={{ color: "var(--accent-red)", fontSize: 12, marginTop: 14 }}>{error}</p>
@@ -492,6 +587,15 @@ export function AdminMasterPic({
         busy={busy}
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDeleteConfirmed}
+      />
+
+      <ImageLightbox
+        open={Boolean(logoViewer)}
+        src={logoViewer?.src || ""}
+        alt={logoViewer?.title || "Preview display picture"}
+        title={logoViewer?.title || "Preview display picture"}
+        subtitle="Display picture PIC"
+        onClose={() => setLogoViewer(null)}
       />
     </>
   );

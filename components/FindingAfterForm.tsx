@@ -1,7 +1,6 @@
 "use client";
 
-import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Stepper } from "./Stepper";
 import { createClient } from "@/lib/supabase/client";
@@ -9,6 +8,8 @@ import { submitProgressUpdate, uploadFindingPhoto, type Finding } from "@/lib/qu
 import { compressImage } from "@/lib/compress";
 import { withTimeout } from "@/lib/async-utils";
 import { displayErrorMessage } from "@/lib/errors";
+import { MediaSourceMenu } from "./MediaSourceMenu";
+import { ImageLightbox } from "./ImageLightbox";
 import {
   formatDateTime,
   getCategoryLabel,
@@ -29,11 +30,40 @@ export function FindingAfterForm({ finding }: { finding: Finding }) {
   const [afterPreview, setAfterPreview] = useState("");
   const [afterDescription, setAfterDescription] = useState("");
   const [resolvedDatetime, setResolvedDatetime] = useState(toLocalDatetimeValue());
+  const [beforePreviewOpen, setBeforePreviewOpen] = useState(false);
+  const [afterPreviewOpen, setAfterPreviewOpen] = useState(false);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
 
   const beforePhoto = finding.photos.find((p) => p.stage === "before");
   const minDatetime = toLocalDatetimeValue(
     new Date(finding.foundDatetime || finding.foundAt)
   );
+
+  useEffect(() => {
+    return () => {
+      if (afterPreview.startsWith("blob:")) {
+        URL.revokeObjectURL(afterPreview);
+      }
+    };
+  }, [afterPreview]);
+
+  function applyAfterPhoto(file: File | null) {
+    if (!file) return;
+    setAfterPhoto(file);
+    setAfterPreview((prev) => {
+      if (prev.startsWith("blob:")) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+  }
+
+  function triggerCameraInput() {
+    cameraInputRef.current?.click();
+  }
+
+  function triggerGalleryInput() {
+    galleryInputRef.current?.click();
+  }
 
   function validate(s: number) {
     if (s === 1 && (!afterPhoto || !afterDescription.trim())) {
@@ -118,48 +148,60 @@ export function FindingAfterForm({ finding }: { finding: Finding }) {
             {beforePhoto && (
               <div className="photo-preview">
                 <p className="section-title">Foto Before</p>
-                <div className="photo-preview-item">
-                  <Image
-                    src={beforePhoto.publicUrl}
-                    alt="before"
-                    width={1200}
-                    height={900}
-                    unoptimized
-                    style={{ width: "100%", height: "auto" }}
-                  />
-                </div>
+                <button
+                  type="button"
+                  className="photo-preview-item photo-preview-item-button"
+                  onClick={() => setBeforePreviewOpen(true)}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={beforePhoto.publicUrl} alt="before" />
+                  <div>Foto before tersimpan</div>
+                </button>
               </div>
             )}
 
-            <label className="upload-card">
-              <span>Foto After</span>
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) {
-                    setAfterPhoto(f);
-                    setAfterPreview(URL.createObjectURL(f));
-                  }
-                }}
-                required
-              />
-            </label>
+            <MediaSourceMenu
+              label="Foto After"
+              mainLabel="Upload After"
+              cameraLabel="Buka Kamera"
+              galleryLabel="Buka Galeri"
+              helperText="Ambil foto baru atau pilih file dari galeri perangkat."
+              onMainClick={triggerGalleryInput}
+              onCameraClick={triggerCameraInput}
+              onGalleryClick={triggerGalleryInput}
+            />
+            <input
+              ref={cameraInputRef}
+              className="visually-hidden-file"
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => {
+                applyAfterPhoto(e.target.files?.[0] || null);
+                e.currentTarget.value = "";
+              }}
+            />
+            <input
+              ref={galleryInputRef}
+              className="visually-hidden-file"
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                applyAfterPhoto(e.target.files?.[0] || null);
+                e.currentTarget.value = "";
+              }}
+            />
             {afterPreview && (
               <div className="photo-preview">
-                <div className="photo-preview-item">
-                  <Image
-                    src={afterPreview}
-                    alt="after"
-                    width={1200}
-                    height={900}
-                    unoptimized
-                    style={{ width: "100%", height: "auto" }}
-                  />
+                <button
+                  type="button"
+                  className="photo-preview-item photo-preview-item-button"
+                  onClick={() => setAfterPreviewOpen(true)}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={afterPreview} alt="after" />
                   <div>{afterPhoto?.name}</div>
-                </div>
+                </button>
               </div>
             )}
 
@@ -277,6 +319,23 @@ export function FindingAfterForm({ finding }: { finding: Finding }) {
           </div>
         </div>
       )}
+
+      <ImageLightbox
+        open={beforePreviewOpen}
+        src={beforePhoto?.publicUrl || ""}
+        alt="Preview foto before"
+        title="Foto Before"
+        subtitle={finding.code}
+        onClose={() => setBeforePreviewOpen(false)}
+      />
+      <ImageLightbox
+        open={afterPreviewOpen}
+        src={afterPreview}
+        alt="Preview foto after"
+        title="Foto After"
+        subtitle={afterPhoto?.name || finding.code}
+        onClose={() => setAfterPreviewOpen(false)}
+      />
 
       {toast && <div className="toast toast-error">{toast}</div>}
     </>
