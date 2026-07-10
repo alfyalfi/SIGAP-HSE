@@ -2,18 +2,23 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { COMPANIES, SIGAP_FULL_NAME } from "@/lib/constants";
+import { SIGAP_FULL_NAME } from "@/lib/constants";
 import { ADMIN_PIN_MAX, ADMIN_PIN_MIN, isValidAdminPin } from "@/lib/pin";
 import { withTimeout } from "@/lib/async-utils";
 import { displayErrorMessage } from "@/lib/errors";
 import { AppCopyright } from "./AppCopyright";
 import { SigapLogo } from "./SigapLogo";
+import type { LoginAccount } from "@/lib/queries";
 
-export function LoginForm() {
+type LoginFormProps = {
+  accounts: LoginAccount[];
+};
+
+export function LoginForm({ accounts }: LoginFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [tab, setTab] = useState<"user" | "admin">("user");
-  const [companyId, setCompanyId] = useState("");
+  const [accountEmail, setAccountEmail] = useState("");
   const [pin, setPin] = useState("");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
@@ -43,7 +48,7 @@ export function LoginForm() {
 
   async function handleUserLogin(e: React.FormEvent) {
     e.preventDefault();
-    if (!companyId) return;
+    if (!accountEmail) return;
     setLoading(true);
     setStatus("Sedang masuk...");
     try {
@@ -51,7 +56,7 @@ export function LoginForm() {
         fetch("/api/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ type: "user", companyId }),
+          body: JSON.stringify({ type: "user", email: accountEmail }),
         }),
         15000,
         "Login user"
@@ -149,11 +154,11 @@ export function LoginForm() {
             <form className="auth-form login-panel active" onSubmit={handleUserLogin}>
               <label>
                 <span>Pilih Perusahaan (PIC)</span>
-                <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} required>
+                <select value={accountEmail} onChange={(e) => setAccountEmail(e.target.value)} required>
                   <option value="">- Pilih Perusahaan -</option>
-                  {COMPANIES.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
+                  {accounts.map((account) => (
+                    <option key={account.id} value={account.email}>
+                      {account.name}
                     </option>
                   ))}
                 </select>

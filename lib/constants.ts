@@ -12,7 +12,7 @@ export const FINDING_CATEGORIES = [
 
 export const COMPANIES = [
   { id: "pt-ljs", name: "PT Lautan Jaya Semesta", email: "pt-ljs@sigap.com" },
-  { id: "wimas", name: "WIMAS", email: "wimas@sigap.com" },
+  { id: "wimas", name: "PT WIMAS", email: "wimas@sigap.com" },
   { id: "pt-centrindo", name: "PT CENTRINDO PALMAX", email: "pt-centrindo@sigap.com" },
   { id: "pt-patama", name: "PT PATAMA ADIJAYA STEEL", email: "pt-patama@sigap.com" },
   { id: "pt-guna", name: "PT GUNA TEKNIK PERKASA", email: "pt-guna@sigap.com" },
@@ -31,6 +31,22 @@ export function getCompanyById(id: string) {
 
 export function getCategoryLabel(value?: string | null) {
   return FINDING_CATEGORIES.find((c) => c.value === value)?.label || value || "-";
+}
+
+export function formatMonthYear(iso?: string | null) {
+  if (!iso) return "-";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleDateString("id-ID", {
+    month: "long",
+    year: "numeric",
+  });
+}
+
+export function toMonthValue(date?: Date) {
+  const d = date || new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
 }
 
 export const STATUS_LABELS: Record<string, string> = {

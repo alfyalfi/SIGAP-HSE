@@ -159,7 +159,7 @@ declare
 begin
   perform public.sigap_upsert_auth_user('admin@sigap.com', pw, 'Administrator SIGAP', 'admin');
   perform public.sigap_upsert_auth_user('pt-ljs@sigap.com', pw, 'PT Lautan Jaya Semesta', 'field_staff');
-  perform public.sigap_upsert_auth_user('wimas@sigap.com', pw, 'WIMAS', 'field_staff');
+  perform public.sigap_upsert_auth_user('wimas@sigap.com', pw, 'PT WIMAS', 'field_staff');
   perform public.sigap_upsert_auth_user('pt-centrindo@sigap.com', pw, 'PT CENTRINDO PALMAX', 'field_staff');
   perform public.sigap_upsert_auth_user('pt-patama@sigap.com', pw, 'PT PATAMA ADIJAYA STEEL', 'field_staff');
   perform public.sigap_upsert_auth_user('pt-guna@sigap.com', pw, 'PT GUNA TEKNIK PERKASA', 'field_staff');

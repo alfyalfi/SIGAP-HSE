@@ -25,6 +25,7 @@ import {
 import type { Finding, Profile } from "@/lib/queries";
 import { AdminStatusBadge } from "./AdminStatusBadge";
 import { MobileRecordCard } from "../MobileRecordCard";
+import { piePercentLabelsPlugin } from "./chart-plugins";
 
 Chart.register(
   CategoryScale,
@@ -310,17 +311,17 @@ export function AdminDashboard({
       options: {
         responsive: true,
         maintainAspectRatio: false,
-          plugins: {
-            legend: { position: "bottom" },
-            tooltip: {
-              callbacks: {
-                label(context) {
-                  const value = Number(context.raw || 0);
-                  return `${context.dataset.label}: ${value}`;
-                },
+        plugins: {
+          legend: { position: "bottom" },
+          tooltip: {
+            callbacks: {
+              label(context) {
+                const value = Number(context.raw || 0);
+                return `${context.dataset.label}: ${value}`;
               },
             },
           },
+        },
         scales: {
           y: { beginAtZero: true, ticks: { stepSize: 1 } },
         },
@@ -339,6 +340,7 @@ export function AdminDashboard({
 
     catChart.current = new Chart(catRef.current, {
       type: "doughnut",
+      plugins: [piePercentLabelsPlugin],
       data: {
         labels,
         datasets: [
@@ -352,7 +354,6 @@ export function AdminDashboard({
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        cutout: "62%",
         plugins: {
           legend: { display: false },
           tooltip: {

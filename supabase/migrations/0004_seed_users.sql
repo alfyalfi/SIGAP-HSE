@@ -9,7 +9,7 @@ where id = (select id from auth.users where email = 'admin@sigap.com');
 update profiles set role = 'field_staff', full_name = 'PT Lautan Jaya Semesta', is_active = true
 where id = (select id from auth.users where email = 'pt-ljs@sigap.com');
 
-update profiles set role = 'field_staff', full_name = 'WIMAS', is_active = true
+update profiles set role = 'field_staff', full_name = 'PT WIMAS', is_active = true
 where id = (select id from auth.users where email = 'wimas@sigap.com');
 
 update profiles set role = 'field_staff', full_name = 'PT CENTRINDO PALMAX', is_active = true

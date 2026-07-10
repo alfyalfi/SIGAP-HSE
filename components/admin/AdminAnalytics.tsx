@@ -36,6 +36,7 @@ import {
   type ExportFilters,
 } from "@/lib/report-export";
 import { getStatusColor } from "@/lib/constants";
+import { piePercentLabelsPlugin } from "./chart-plugins";
 
 Chart.register(
   CategoryScale,
@@ -381,6 +382,7 @@ export function AdminAnalytics({ findings, profiles }: AdminAnalyticsProps) {
       charts.current.push(
         new Chart(catRef.current, {
           type: "doughnut",
+          plugins: [piePercentLabelsPlugin],
           data: {
             labels: categoryBreakdown.map(([name]) => name),
             datasets: [
@@ -394,7 +396,6 @@ export function AdminAnalytics({ findings, profiles }: AdminAnalyticsProps) {
           options: {
             responsive: true,
             maintainAspectRatio: false,
-            cutout: "60%",
             plugins: {
               legend: { display: false },
               tooltip: {

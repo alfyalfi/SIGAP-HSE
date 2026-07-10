@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { uploadMonthlyReport, type MonthlyReport } from "@/lib/queries";
-import { formatDate, formatDateTime, toLocalDateValue } from "@/lib/constants";
+import { formatMonthYear, toMonthValue } from "@/lib/constants";
 import { withTimeout } from "@/lib/async-utils";
 import { displayErrorMessage } from "@/lib/errors";
 
@@ -19,20 +19,24 @@ export function MonthlyReportForm({
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState("");
-  const [reportDate, setReportDate] = useState(toLocalDateValue());
+  const [reportMonth, setReportMonth] = useState(toMonthValue());
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
     const fileInput = form.elements.namedItem("reportFile") as HTMLInputElement;
     const file = fileInput.files?.[0];
-    if (!file || !reportDate) return;
+    if (!file || !reportMonth) return;
 
     setLoading(true);
     try {
-      await withTimeout(uploadMonthlyReport(supabase, file, reportDate, companyName), 30000, "Upload laporan");
+      await withTimeout(
+        uploadMonthlyReport(supabase, file, reportMonth, companyName),
+        30000,
+        "Upload laporan"
+      );
       form.reset();
-      setReportDate(toLocalDateValue());
+      setReportMonth(toMonthValue());
       router.refresh();
     } catch (err) {
       setToast(displayErrorMessage(err, "Gagal upload", "REPORT"));
@@ -50,21 +54,21 @@ export function MonthlyReportForm({
       <div className="monthly-grid">
         <form className="card" onSubmit={handleSubmit}>
           <label>
-            <span>Tanggal Laporan</span>
+            <span>Periode Laporan</span>
             <div className="input-with-action">
               <input
-                type="date"
+                type="month"
                 name="reportDate"
-                value={reportDate}
-                onChange={(e) => setReportDate(e.target.value)}
+                value={reportMonth}
+                onChange={(e) => setReportMonth(e.target.value)}
                 required
               />
               <button
                 type="button"
                 className="button button-secondary"
-                onClick={() => setReportDate(toLocalDateValue())}
+                onClick={() => setReportMonth(toMonthValue())}
               >
-                Sekarang
+                Bulan Ini
               </button>
             </div>
           </label>
@@ -85,9 +89,7 @@ export function MonthlyReportForm({
               reports.map((r) => (
                 <div key={r.id} className="history-item">
                   <strong>{r.fileName}</strong>
-                  <p className="muted">
-                    {formatDate(r.reportDate || r.reportMonth)} · {formatDateTime(r.createdAt)}
-                  </p>
+                  <p className="muted">{formatMonthYear(r.reportDate || r.reportMonth)}</p>
                 </div>
               ))
             ) : (

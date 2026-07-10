@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { getLoginAccounts } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 import { ADMIN_EMAIL, getCompanyById } from "@/lib/constants";
 import { getServerSecrets, getSupabaseEnv } from "@/lib/env";
 import { toErrorBody } from "@/lib/errors";
+import { createServiceClient } from "@/lib/supabase/service";
 import { isValidAdminPin } from "@/lib/pin";
 
 function isUndefinedColumnError(error: unknown) {
@@ -39,13 +41,14 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { type, companyId, pin } = body as {
+  const { type, companyId, email: selectedEmailInput, pin } = body as {
     type: "user" | "admin";
     companyId?: string;
+    email?: string;
     pin?: string;
   };
 
-  let email: string;
+  let loginEmail: string;
 
   if (type === "admin") {
     if (!pin || !isValidAdminPin(pin)) {
@@ -56,21 +59,47 @@ export async function POST(request: Request) {
     if (pin !== secrets.adminPin) {
       return NextResponse.json(toErrorBody(null, "PIN salah.", "AUTH"), { status: 401 });
     }
-    email = ADMIN_EMAIL;
+    loginEmail = ADMIN_EMAIL;
   } else {
-    const company = getCompanyById(companyId || "");
-    if (!company) {
-      return NextResponse.json(
-        toErrorBody(null, "Perusahaan tidak ditemukan.", "AUTH"),
-        { status: 400 }
-      );
+    const selectedEmail = selectedEmailInput || companyId || "";
+    const staticFallbackEmail = selectedEmail.includes("@")
+      ? ""
+      : getCompanyById(selectedEmail)?.email || "";
+
+    try {
+      const service = createServiceClient();
+      const loginAccounts = await getLoginAccounts(service);
+      const account = loginAccounts.find((item) => item.email === selectedEmail);
+
+      if (account?.email) {
+        loginEmail = account.email;
+      } else {
+        return NextResponse.json(toErrorBody(null, "Perusahaan tidak ditemukan.", "AUTH"), {
+          status: 400,
+        });
+      }
+    } catch {
+      if (!staticFallbackEmail) {
+        if (!selectedEmail.includes("@")) {
+          return NextResponse.json(toErrorBody(null, "Perusahaan tidak ditemukan.", "AUTH"), {
+            status: 400,
+          });
+        }
+        loginEmail = selectedEmail;
+      } else {
+        loginEmail = staticFallbackEmail;
+      }
+      if (!loginEmail) {
+        return NextResponse.json(toErrorBody(null, "Perusahaan tidak ditemukan.", "AUTH"), {
+          status: 400,
+        });
+      }
     }
-    email = company.email;
   }
 
   const supabase = await createClient();
   const { data: authData, error } = await supabase.auth.signInWithPassword({
-    email,
+    email: loginEmail,
     password: secrets.demoPassword,
   });
 

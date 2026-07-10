@@ -14,6 +14,14 @@ export type Profile = {
   logoUrl?: string | null;
 };
 
+export type LoginAccount = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  is_active: boolean;
+};
+
 export type FindingPhoto = {
   id: string;
   stage: string;
@@ -244,6 +252,33 @@ export async function getProfiles(client: SupabaseClient): Promise<Profile[]> {
   }
   if (error) throw error;
   return (data || []).map((row: ProfileRow) => normalizeProfile(client, row as Record<string, unknown>));
+}
+
+export async function getLoginAccounts(client: SupabaseClient): Promise<LoginAccount[]> {
+  const [profiles, usersResult] = await Promise.all([
+    getProfiles(client).catch(() => [] as Profile[]),
+    client.auth.admin.listUsers(),
+  ]);
+
+  const userEmailById = new Map(
+    (usersResult.data.users || [])
+      .map((user) => [user.id, user.email || ""] as const)
+      .filter(([, email]) => Boolean(email))
+  );
+
+  return profiles
+    .filter((profile) => profile.role !== "admin" && profile.is_active !== false)
+    .map((profile) => {
+      const email = userEmailById.get(profile.id) || "";
+      return {
+        id: profile.id,
+        name: profile.full_name || email || "PIC",
+        email,
+        role: profile.role,
+        is_active: profile.is_active !== false,
+      };
+    })
+    .filter((account) => Boolean(account.email));
 }
 
 export async function updateProfile(
@@ -559,7 +594,8 @@ export async function uploadMonthlyReport(
   companyName: string
 ) {
   const profile = await getCurrentProfile(client);
-  const storagePath = `${profile.id}/${reportDate}-${Date.now()}-${file.name}`;
+  const reportMonthKey = reportDate.slice(0, 7);
+  const storagePath = `${profile.id}/${reportMonthKey}-${Date.now()}-${file.name}`;
 
   const { error: uploadError } = await client.storage
     .from(REPORT_BUCKET)
@@ -569,11 +605,11 @@ export async function uploadMonthlyReport(
   const basePayload = {
     uploaded_by: profile.id,
     company_name: companyName,
-    report_month: `${reportDate.slice(0, 7)}-01`,
+    report_month: `${reportMonthKey}-01`,
     storage_path: storagePath,
     file_name: file.name,
   };
-  const payloadWithDate = { ...basePayload, report_date: reportDate };
+  const payloadWithDate = { ...basePayload, report_date: `${reportMonthKey}-01` };
 
   type MonthlyReportRow = {
     id: string;
@@ -609,8 +645,8 @@ export async function uploadMonthlyReport(
   const report = data || {
     id: "",
     company_name: companyName,
-    report_month: `${reportDate.slice(0, 7)}-01`,
-    report_date: reportDate,
+    report_month: `${reportMonthKey}-01`,
+    report_date: `${reportMonthKey}-01`,
     storage_path: storagePath,
     file_name: file.name,
     created_at: new Date().toISOString(),
@@ -620,7 +656,7 @@ export async function uploadMonthlyReport(
     id: report.id as string,
     companyName: report.company_name as string,
     reportMonth: report.report_month as string,
-    reportDate: (report.report_date as string | null) || reportDate,
+    reportDate: (report.report_date as string | null) || `${reportMonthKey}-01`,
     storagePath: report.storage_path as string,
     fileName: (report.file_name as string) || "",
     createdAt: report.created_at as string,

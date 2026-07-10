@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatDate, formatDateTime } from "@/lib/constants";
+import { formatMonthYear } from "@/lib/constants";
 import type { Finding, MonthlyReport } from "@/lib/queries";
 import type { AdminDataProps } from "./AdminDashboard";
 import {
@@ -60,7 +61,7 @@ function reportDateValue(report: MonthlyReport) {
 }
 
 function reportSearchValue(report: MonthlyReport) {
-  return [report.companyName, report.fileName, formatDate(report.reportDate || report.reportMonth), formatDateTime(report.createdAt)]
+  return [report.companyName, report.fileName, formatMonthYear(report.reportDate || report.reportMonth)]
     .join(" ")
     .toLowerCase();
 }
@@ -386,7 +387,7 @@ export function AdminReports({ findings, profiles, reports, onDeleteReports }: A
       const { data, error } = await supabase.storage.from("monthly-reports").download(report.storagePath);
       if (error || !data) throw error || new Error("Gagal mengunduh file.");
       const safeFileName =
-        report.fileName || `${slugifyFileName(report.companyName)}-${slugifyFileName(report.reportDate || report.reportMonth)}.bin`;
+        report.fileName || `${slugifyFileName(report.companyName)}-${slugifyFileName(formatMonthYear(report.reportDate || report.reportMonth))}.bin`;
       downloadBlobFile(data, safeFileName);
       logExport(`Unduh ${report.fileName || report.companyName}`);
     } catch (err) {
@@ -682,15 +683,14 @@ export function AdminReports({ findings, profiles, reports, onDeleteReports }: A
                     </label>
                     <MobileRecordCard
                       title={report.companyName}
-                      subtitle={formatDate(report.reportDate || report.reportMonth)}
+                      subtitle={formatMonthYear(report.reportDate || report.reportMonth)}
                       badge={<span className="mobile-record-chip info">Monthly Report</span>}
                       sections={[
                         {
                           title: "Detail file",
                           fields: [
-                            { label: "Periode", value: formatDate(report.reportDate || report.reportMonth) },
+                            { label: "Periode", value: formatMonthYear(report.reportDate || report.reportMonth) },
                             { label: "File", value: report.fileName || "-" },
-                            { label: "Uploaded", value: formatDateTime(report.createdAt) },
                           ],
                         },
                       ]}
@@ -727,8 +727,7 @@ export function AdminReports({ findings, profiles, reports, onDeleteReports }: A
                   <th>Perusahaan</th>
                   <th>Periode</th>
                   <th>File</th>
-                  <th>Uploaded</th>
-                  <th>Aksi</th>
+                      <th>Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -744,9 +743,8 @@ export function AdminReports({ findings, profiles, reports, onDeleteReports }: A
                         />
                       </td>
                       <td>{report.companyName}</td>
-                      <td>{formatDate(report.reportDate || report.reportMonth)}</td>
+                      <td>{formatMonthYear(report.reportDate || report.reportMonth)}</td>
                       <td className="mono">{report.fileName || "-"}</td>
-                      <td className="mono">{formatDateTime(report.createdAt)}</td>
                       <td>
                         <button
                           type="button"
@@ -761,11 +759,11 @@ export function AdminReports({ findings, profiles, reports, onDeleteReports }: A
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="admin-empty">
-                      Belum ada monthly report yang diunggah PIC.
-                    </td>
-                  </tr>
-                )}
+                  <td colSpan={5} className="admin-empty">
+                    Belum ada monthly report yang diunggah PIC.
+                  </td>
+                </tr>
+              )}
               </tbody>
             </table>
           </div>
