@@ -556,7 +556,8 @@
   font-weight: 700;
 }
 .admin-filter-bar select,
-.admin-filter-bar input[type="date"] {
+.admin-filter-bar input[type="date"],
+.admin-filter-bar input[type="search"] {
   background: var(--surface-2);
   border: 1px solid var(--border);
   font-size: 12px;
@@ -1528,7 +1529,8 @@
     padding: 12px;
   }
   .admin-filter-bar select,
-  .admin-filter-bar input[type="date"] {
+  .admin-filter-bar input[type="date"],
+  .admin-filter-bar input[type="search"] {
     width: 100%;
   }
   .admin-filter-count,

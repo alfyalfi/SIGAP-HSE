@@ -299,21 +299,30 @@ export function buildDocxBlob(title: string, paragraphs: string[], headers: stri
 
 export function downloadTextFile(content: string, fileName: string, mime = "text/plain;charset=utf-8") {
   const blob = new Blob([content], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = fileName;
-  a.click();
-  URL.revokeObjectURL(url);
+  downloadBlobFile(blob, fileName);
 }
 
 export function downloadBlobFile(blob: Blob, fileName: string) {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+
+  const nav = window.navigator as Navigator & { msSaveOrOpenBlob?: (blob: Blob, fileName?: string) => void };
+  if (typeof nav.msSaveOrOpenBlob === "function") {
+    nav.msSaveOrOpenBlob(blob, fileName);
+    return;
+  }
+
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = fileName;
+  a.rel = "noopener";
+  a.style.display = "none";
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => {
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, 1000);
 }
 
 export function slugifyFileName(value: string) {

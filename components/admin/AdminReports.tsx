@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatDate, formatDateTime } from "@/lib/constants";
 import type { Finding, MonthlyReport } from "@/lib/queries";
 import type { AdminDataProps } from "./AdminDashboard";
@@ -42,6 +42,9 @@ type AdminReportsProps = AdminDataProps & {
 };
 
 type ExportFormat = "csv" | "xlsx" | "docx" | "pdf" | "jpg";
+type ReportSort = "newest" | "oldest" | "company-asc" | "company-desc" | "period-newest" | "period-oldest";
+
+const PAGE_SIZE = 10;
 
 const DEFAULT_EXPORT_FILTERS: ExportFilters = {
   status: "",
@@ -51,6 +54,16 @@ const DEFAULT_EXPORT_FILTERS: ExportFilters = {
   dateFrom: "",
   dateTo: "",
 };
+
+function reportDateValue(report: MonthlyReport) {
+  return new Date(report.reportDate || report.reportMonth || report.createdAt).getTime();
+}
+
+function reportSearchValue(report: MonthlyReport) {
+  return [report.companyName, report.fileName, formatDate(report.reportDate || report.reportMonth), formatDateTime(report.createdAt)]
+    .join(" ")
+    .toLowerCase();
+}
 
 const EXPORT_FORMATS: Array<{
   id: ExportFormat;
@@ -142,18 +155,52 @@ export function AdminReports({ findings, profiles, reports, onDeleteReports }: A
   const [exportFormat, setExportFormat] = useState<ExportFormat>("xlsx");
   const [exportFilters, setExportFilters] = useState<ExportFilters>(DEFAULT_EXPORT_FILTERS);
   const [exporting, setExporting] = useState(false);
+  const [reportSearch, setReportSearch] = useState("");
+  const [reportCompany, setReportCompany] = useState("");
+  const [reportSort, setReportSort] = useState<ReportSort>("newest");
+  const [reportPage, setReportPage] = useState(1);
   const [selectedReportIds, setSelectedReportIds] = useState<string[]>([]);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deletingReports, setDeletingReports] = useState(false);
 
   const monthlyPreview = useMemo(() => buildMonthlyPreview(findings), [findings]);
-  const sortedReports = useMemo(
-    () =>
-      [...reports].sort((a, b) => {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      }),
+  const reportCompanyOptions = useMemo(
+    () => [...new Set(reports.map((report) => report.companyName).filter(Boolean))].sort(),
     [reports]
   );
+
+  const filteredSortedReports = useMemo(() => {
+    const query = reportSearch.trim().toLowerCase();
+    const filtered = reports.filter((report) => {
+      if (reportCompany && report.companyName !== reportCompany) return false;
+      if (!query) return true;
+      return reportSearchValue(report).includes(query);
+    });
+
+    return [...filtered].sort((a, b) => {
+      const dateDiff = reportDateValue(a) - reportDateValue(b);
+      switch (reportSort) {
+        case "oldest":
+          return dateDiff;
+        case "company-asc":
+          return a.companyName.localeCompare(b.companyName, "id");
+        case "company-desc":
+          return b.companyName.localeCompare(a.companyName, "id");
+        case "period-newest":
+          return dateDiff * -1 || b.createdAt.localeCompare(a.createdAt);
+        case "period-oldest":
+          return dateDiff || a.createdAt.localeCompare(b.createdAt);
+        case "newest":
+        default:
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+    });
+  }, [reports, reportSearch, reportCompany, reportSort]);
+
+  const totalReportPages = Math.max(1, Math.ceil(filteredSortedReports.length / PAGE_SIZE));
+  const currentReportPage = Math.min(reportPage, totalReportPages);
+  const pagedReports = filteredSortedReports.slice((currentReportPage - 1) * PAGE_SIZE, currentReportPage * PAGE_SIZE);
+  const reportSelectedSet = useMemo(() => new Set(selectedReportIds), [selectedReportIds]);
 
   const filteredFindings = useMemo(
     () => filterFindingsForExport(findings, exportFilters),
@@ -178,10 +225,12 @@ export function AdminReports({ findings, profiles, reports, onDeleteReports }: A
     () => [...new Set(findings.map((f) => f.companyName).filter(Boolean))].sort(),
     [findings]
   );
-  const isExportRangeReady = Boolean(exportFilters.dateFrom && exportFilters.dateTo);
-  const selectedReportSet = useMemo(() => new Set(selectedReportIds), [selectedReportIds]);
-  const allReportsSelected = sortedReports.length > 0 && selectedReportIds.length === sortedReports.length;
+  const allReportsSelected = filteredSortedReports.length > 0 && filteredSortedReports.every((report) => reportSelectedSet.has(report.id));
   const selectedReportCount = selectedReportIds.length;
+
+  useEffect(() => {
+    setReportPage(1);
+  }, [reportSearch, reportCompany, reportSort]);
 
   function toggleReportSelection(reportId: string) {
     setSelectedReportIds((prev) =>
@@ -191,7 +240,7 @@ export function AdminReports({ findings, profiles, reports, onDeleteReports }: A
 
   function toggleAllReports() {
     setSelectedReportIds((prev) =>
-      prev.length === sortedReports.length ? [] : sortedReports.map((report) => report.id)
+      prev.length === filteredSortedReports.length ? [] : filteredSortedReports.map((report) => report.id)
     );
   }
 
@@ -286,10 +335,6 @@ export function AdminReports({ findings, profiles, reports, onDeleteReports }: A
   }
 
   async function handleExport() {
-    if (!isExportRangeReady) {
-      logExport("Ekspor", "Gagal");
-      return;
-    }
     setExporting(true);
     try {
       const rows = filteredFindings;
@@ -470,7 +515,7 @@ export function AdminReports({ findings, profiles, reports, onDeleteReports }: A
                 type="button"
                 className="admin-btn admin-btn-primary admin-btn-export"
                 onClick={handleExport}
-                disabled={exporting || exportRows.length === 0 || !isExportRangeReady}
+                disabled={exporting || exportRows.length === 0}
               >
                 {exporting ? (
                   <>
@@ -482,11 +527,6 @@ export function AdminReports({ findings, profiles, reports, onDeleteReports }: A
                 )}
               </button>
             </div>
-            {!isExportRangeReady && (
-              <p className="muted" style={{ fontSize: 12 }}>
-                Pilih rentang tanggal dulu agar ekspor lebih presisi.
-              </p>
-            )}
           </div>
         </div>
 
@@ -586,11 +626,50 @@ export function AdminReports({ findings, profiles, reports, onDeleteReports }: A
             </button>
           </div>
         </div>
+        <div className="admin-filter-bar" style={{ marginBottom: 14 }}>
+          <span className="admin-filter-tag">Filter Report:</span>
+          <input
+            type="search"
+            placeholder="Cari perusahaan atau nama file..."
+            value={reportSearch}
+            onChange={(e) => setReportSearch(e.target.value)}
+            style={{ minWidth: 220 }}
+          />
+          <select value={reportCompany} onChange={(e) => setReportCompany(e.target.value)}>
+            <option value="">Semua perusahaan</option>
+            {reportCompanyOptions.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+          <select value={reportSort} onChange={(e) => setReportSort(e.target.value as ReportSort)}>
+            <option value="newest">Urut: terbaru</option>
+            <option value="oldest">Urut: terlama</option>
+            <option value="period-newest">Periode: terbaru</option>
+            <option value="period-oldest">Periode: terlama</option>
+            <option value="company-asc">Perusahaan: A-Z</option>
+            <option value="company-desc">Perusahaan: Z-A</option>
+          </select>
+          <span className="admin-filter-count">{filteredSortedReports.length} report</span>
+          <button
+            type="button"
+            className="admin-filter-reset"
+            onClick={() => {
+              setReportSearch("");
+              setReportCompany("");
+              setReportSort("newest");
+              setReportPage(1);
+            }}
+          >
+            Reset filter
+          </button>
+        </div>
         <div className="admin-table-panel" style={{ border: "none", boxShadow: "none" }}>
           <div className="mobile-only admin-mobile-card-list">
-            {sortedReports.length ? (
-              sortedReports.map((report) => {
-                const checked = selectedReportSet.has(report.id);
+            {pagedReports.length ? (
+              pagedReports.map((report) => {
+                const checked = reportSelectedSet.has(report.id);
                 return (
                   <div key={report.id} className="admin-report-select-row">
                     <label className="admin-report-select-check">
@@ -653,13 +732,13 @@ export function AdminReports({ findings, profiles, reports, onDeleteReports }: A
                 </tr>
               </thead>
               <tbody>
-                {sortedReports.length ? (
-                  sortedReports.map((report) => (
+                {pagedReports.length ? (
+                  pagedReports.map((report) => (
                     <tr key={report.id} style={{ cursor: "default" }}>
                       <td>
                         <input
                           type="checkbox"
-                          checked={selectedReportSet.has(report.id)}
+                          checked={reportSelectedSet.has(report.id)}
                           onChange={() => toggleReportSelection(report.id)}
                           aria-label={`Pilih laporan ${report.fileName || report.companyName}`}
                         />
@@ -689,6 +768,46 @@ export function AdminReports({ findings, profiles, reports, onDeleteReports }: A
                 )}
               </tbody>
             </table>
+          </div>
+          <div className="admin-table-foot">
+            <span>
+              Menampilkan {pagedReports.length ? (currentReportPage - 1) * PAGE_SIZE + 1 : 0}-
+              {(currentReportPage - 1) * PAGE_SIZE + pagedReports.length} dari {filteredSortedReports.length} report
+            </span>
+            <div className="admin-pagination">
+              <button
+                type="button"
+                className="admin-page-btn"
+                disabled={currentReportPage <= 1}
+                onClick={() => setReportPage((p) => Math.max(1, p - 1))}
+              >
+                &lsaquo;
+              </button>
+              {Array.from({ length: totalReportPages }, (_, i) => i + 1)
+                .filter((p) => p === 1 || p === totalReportPages || Math.abs(p - currentReportPage) <= 1)
+                .map((p, idx, arr) => (
+                  <span key={p} style={{ display: "contents" }}>
+                    {idx > 0 && arr[idx - 1] !== p - 1 && (
+                      <span style={{ padding: "0 4px", color: "var(--text-faint)" }}>...</span>
+                    )}
+                    <button
+                      type="button"
+                      className={`admin-page-btn${p === currentReportPage ? " active" : ""}`}
+                      onClick={() => setReportPage(p)}
+                    >
+                      {p}
+                    </button>
+                  </span>
+                ))}
+              <button
+                type="button"
+                className="admin-page-btn"
+                disabled={currentReportPage >= totalReportPages}
+                onClick={() => setReportPage((p) => Math.min(totalReportPages, p + 1))}
+              >
+                &rsaquo;
+              </button>
+            </div>
           </div>
           </div>
         </div>

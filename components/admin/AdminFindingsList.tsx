@@ -80,7 +80,7 @@ export function AdminFindingsList({ findings, profiles, onViewFinding }: AdminFi
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const pageRows = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-  const exportReady = Boolean(dateFrom && dateTo);
+  const exportReady = true;
 
   function resetFilters() {
     setSearch("");
@@ -206,12 +206,6 @@ export function AdminFindingsList({ findings, profiles, onViewFinding }: AdminFi
           Reset filter
         </button>
       </div>
-      {!exportReady && (
-        <p className="muted" style={{ marginBottom: 12, fontSize: 12 }}>
-          Pilih rentang tanggal dari dan sampai sebelum ekspor Excel.
-        </p>
-      )}
-
       <div className="admin-table-panel">
         <div className="mobile-only admin-mobile-card-list">
           {pageRows.length ? (
