@@ -2,7 +2,7 @@ export const ADMIN_EMAIL = "admin@sigap.com";
 
 export const SIGAP_FULL_NAME = "Sistem Informasi Guna Analisa dan Pelaporan";
 
-export const SIGAP_COPYRIGHT = "SIGAP 2026 - Alfaristudio";
+export const SIGAP_COPYRIGHT = "SIGAP 2026 - Abdel Hakim";
 
 export const FINDING_CATEGORIES = [
   { value: "unsafe_act", label: "Unsafe Act" },
